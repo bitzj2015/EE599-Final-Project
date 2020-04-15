@@ -9,7 +9,7 @@ Jiang Zhang, Zhongxuan Ruan, Mengwei Yang
 * Jiang Zhang:  Implement the basic GAP architecture, including one generator and one adver-sary.
 * Zhongxuan Ruan:  Prepossess AOL dataset and convert word tokens in queries into featurevectors.
 * Mengwei Yang:  Investigate DNN models in GAP architecture.
-* All team members will work on the final presentation, slides, and report.  And they will contributeequally to this project.
+* All team members will work on the final presentation, slides, and report.  And they will contribute equally to this project.
 
 ## Required Environment:
 Pytorch 1.4, Python 3.6+, ...
