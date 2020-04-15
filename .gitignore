@@ -1,4 +1,4 @@
 *.json
 local
 .data
-.ipynb*
+.ipynb_checkpoints
