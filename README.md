@@ -13,3 +13,6 @@ Jiang Zhang, Zhongxuan Ruan, Mengwei Yang
 
 ## Required Environment:
 Pytorch 1.4, Python 3.6+
+
+## Notes:
+* Please run `git pull` and fix your local conflicts, before you upload your commits using `git push`.
