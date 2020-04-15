@@ -16,6 +16,7 @@ Pytorch 1.4, Python 3.6+, ...
 
 ## Notes:
 * Please run `git pull` and fix your local conflicts, before you upload your commits using `git push`.
+* If you want to keep something locally without being uploaded to github, add them into `.gitignore`.
 
 ## References:
 * [Deep Reinforcement Learning for Dialogue Generation.](https://arxiv.org/pdf/1606.01541.pdf)
