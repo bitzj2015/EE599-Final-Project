@@ -16,3 +16,9 @@ Pytorch 1.4, Python 3.6+, ...
 
 ## Notes:
 * Please run `git pull` and fix your local conflicts, before you upload your commits using `git push`.
+
+## References:
+* [Deep Reinforcement Learning for Dialogue Generation.](https://arxiv.org/pdf/1606.01541.pdf)
+* [Toward Controlled Generation of Text.](https://arxiv.org/pdf/1703.00955.pdf)
+* [DCGAN tutorial.](https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html)
+* [Seq2seq transformer tutorial.](https://pytorch.org/tutorials/beginner/transformer_tutorial.html)
