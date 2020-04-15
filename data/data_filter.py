@@ -1,6 +1,7 @@
 import json
 import random
 import argparse
+from copy import deepcopy
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
@@ -41,13 +42,13 @@ if args.phase == 0:
             tmp["query"].append(query)
             tmp["category"].append(flag)
         if flag_category["0"] == 1:
-            filter_data["0"][user] = tmp
+            filter_data["0"][user] = deepcopy(tmp)
             num_user["0"] += 1
         elif flag_category["1"] == 1:
-            filter_data["1"][user] = tmp
+            filter_data["1"][user] = deepcopy(tmp)
             num_user["1"] += 1
         else:
-            filter_data["2"][user] = tmp
+            filter_data["2"][user] = deepcopy(tmp)
             num_user["2"] += 1
 
     print("# of user in cancer category", num_user["0"])
@@ -66,7 +67,7 @@ else:
         userID[category] = random.sample(list(filter_data[category].keys()), 3200)
         print(userID[category][0:32])
         for user in userID[category]:
-            filter_data_sample[category][user] = filter_data[category][user]
+            filter_data_sample[category][user] = deepcopy(filter_data[category][user])
     with open("dataset_clean_by_category_sample.json", "w") as json_file:
         json.dump(filter_data_sample, json_file)
         

@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from copy import deepcopy
 import argparse
 from tqdm import tqdm
 
@@ -61,8 +62,8 @@ else:
         if len(query) >= 100:
             count += 1
             clean_data[user] = {}
-            clean_data[user]["time"] = data[user]["time"]
-            clean_data[user]["query"] = data[user]["query"]
+            clean_data[user]["time"] = deepcopy(data[user]["time"])
+            clean_data[user]["query"] = deepcopy(data[user]["query"])
         else:
             count_ += 1
     with open("dataset_clean.json", "w") as json_file:
