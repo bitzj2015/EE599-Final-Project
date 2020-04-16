@@ -7,40 +7,6 @@ import torch.optim as optim
 import numpy as np
 from Model import TransformerModel
 
-class Adversarial(nn.module):
-    def __init__(self, name):
-        super(Adversarial, self).__init__()
-        self.name = name
-        self.main = TransformerModel()
-        self.fc = nn.Linear(512, 512)
-    
-    def forward(self, input):
-        out = self.main(input)
-        return self.fc(out)
-
-class Generator(nn.module):
-    def __init__(self, name):
-        super(Generator, self).__init__()
-        self.name = name
-        self.main = TransformerModel()
-        self.fc = nn.Linear(512, 512)
-    
-    def forward(self, input):
-        out = self.main(input)
-        return self.fc(out)
-
-
-class Discriminator(nn.module):
-    def __init__(self, name):
-        super(Discriminator, self).__init__()
-        self.name = name
-        self.main = TransformerModel()
-        self.fc = nn.Linear(512, 512)
-    
-    def forward(self, input):
-        out = self.main(input)
-        return self.fc(out)
-
 class GAP(object):
     def __init__(self, name, generator, discriminator, adversarial, lr=0.001, device="cpu"):
         self.name = name
