@@ -12,17 +12,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 
-from generator import Generator
-from discriminator import Discriminator
-from target_lstm import TargetLSTM
+from generator import Generator, G_args
+from discriminator import Discriminator, D_args
 from rollout import Rollout
-from data_iter import GenDataIter, DisDataIter
-# ================== Parameter Definition =================
 
 parser = argparse.ArgumentParser(description='Training Parameter')
 parser.add_argument('--cuda', action='store', default=None, type=int)
-opt = parser.parse_args()
-print(opt)
+args = parser.parse_args()
+print(args)
 
 # Basic Training Paramters
 SEED = 88
@@ -35,24 +32,26 @@ EVAL_FILE = 'eval.data'
 VOCAB_SIZE = 5000
 PRE_EPOCH_NUM = 120
 
-if opt.cuda is not None and opt.cuda >= 0:
-    torch.cuda.set_device(opt.cuda)
-    opt.cuda = True
 
-# Genrator Parameters
-g_emb_dim = 32
-g_hidden_dim = 32
 g_sequence_len = 20
-
+# Genrator Parameters
+g_args = G_args(vocab_size=3000, 
+                emb_dim=32, 
+                hidden_dim=32)
 # Discriminator Parameters
-d_emb_dim = 64
-d_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
-d_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
-
-d_dropout = 0.75
-d_num_class = 2
-
-
+d_args = D_args(num_classes=2, 
+                vocab_size=3000, 
+                emb_dim=64, 
+                filter_sizes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20], 
+                num_filters=[100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160], 
+                dropout=0.75)
+# Adversarial Parameters
+a_args = D_args(num_classes=3, 
+                vocab_size=3000, 
+                emb_dim=300, 
+                filter_sizes=[3,4,5], 
+                num_filters=[64,64,64], 
+                dropout=0.2)
 
 def generate_samples(model, batch_size, generated_num, output_file):
     samples = []
@@ -68,7 +67,7 @@ def train_epoch(model, data_iter, criterion, optimizer):
     total_loss = 0.
     total_words = 0.
     for (data, target) in data_iter:
-        if opt.cuda:
+        if args.cuda:
             data, target = data.cuda(), target.cuda()
         target = target.contiguous().view(-1)
         pred = model.forward(data)
@@ -89,7 +88,7 @@ def eval_epoch(model, data_iter, criterion):
             #data_iter, mininterval=2, desc=' - Training', leave=False):
             data = Variable(data)
             target = Variable(target)
-            if opt.cuda:
+            if args.cuda:
                 data, target = data.cuda(), target.cuda()
             target = target.contiguous().view(-1)
             pred = model.forward(data)
@@ -134,13 +133,11 @@ def main():
     np.random.seed(SEED)
 
     # Define Networks
-    generator = Generator(VOCAB_SIZE, g_emb_dim, g_hidden_dim, opt.cuda)
-    discriminator = Discriminator(d_num_class, VOCAB_SIZE, d_emb_dim, d_filter_sizes, d_num_filters, d_dropout)
-    target_lstm = TargetLSTM(VOCAB_SIZE, g_emb_dim, g_hidden_dim, opt.cuda)
-    if opt.cuda:
+    generator = Generator(g_args, args.cuda)
+    discriminator = Discriminator(d_args)
+    if args.cuda:
         generator = generator.cuda()
         discriminator = discriminator.cuda()
-        target_lstm = target_lstm.cuda()
     # Generate toy data using target lstm
     print('Generating data ...')
     generate_samples(target_lstm, BATCH_SIZE, GENERATED_NUM, POSITIVE_FILE)
@@ -151,7 +148,7 @@ def main():
     # Pretrain Generator using MLE
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters())
-    if opt.cuda:
+    if args.cuda:
         gen_criterion = gen_criterion.cuda()
     print('Pretrain with MLE ...')
     for epoch in range(PRE_EPOCH_NUM):
@@ -165,7 +162,7 @@ def main():
     # Pretrain Discriminator
     dis_criterion = nn.NLLLoss(reduction='sum')
     dis_optimizer = optim.Adam(discriminator.parameters())
-    if opt.cuda:
+    if args.cuda:
         dis_criterion = dis_criterion.cuda()
     print('Pretrain Discriminator ...')
     for epoch in range(5):
@@ -180,14 +177,14 @@ def main():
     print('Start Adeversatial Training...\n')
     gen_gan_loss = GANLoss()
     gen_gan_optm = optim.Adam(generator.parameters())
-    if opt.cuda:
+    if args.cuda:
         gen_gan_loss = gen_gan_loss.cuda()
     gen_criterion = nn.NLLLoss(reduction='sum')
-    if opt.cuda:
+    if args.cuda:
         gen_criterion = gen_criterion.cuda()
     dis_criterion = nn.NLLLoss(reduction='sum')
     dis_optimizer = optim.Adam(discriminator.parameters())
-    if opt.cuda:
+    if args.cuda:
         dis_criterion = dis_criterion.cuda()
     for total_batch in range(TOTAL_BATCH):
         ## Train the generator for one step
@@ -203,7 +200,7 @@ def main():
             rewards = rollout.get_reward(samples, 16, discriminator)
             rewards = Variable(torch.Tensor(rewards))
             rewards = torch.exp(rewards).contiguous().view((-1,))
-            if opt.cuda:
+            if args.cuda:
                 rewards = rewards.cuda()
             prob = generator.forward(inputs)
             loss = gen_gan_loss(prob, targets, rewards)

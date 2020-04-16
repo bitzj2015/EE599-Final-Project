@@ -10,13 +10,10 @@ class G_args(object):
     def __init__(self, 
                  vocab_size=3000, 
                  emb_dim=300, 
-                 hidden_dim=[3,4,5], 
-                 dropout=0.2):
+                 hidden_dim=[3,4,5]):
         self.vocab_size = vocab_size
         self.emb_dim = emb_dim
         self.hidden_dim = hidden_dim
-        self.num_filters = num_filters 
-        self.dropout = dropout
 
 class Generator(nn.Module):
     '''
