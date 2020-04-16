@@ -10,7 +10,7 @@ parser.add_argument('--phase', help="0 or 1", type=int)
 args = parser.parse_args()
 
 if args.phase == 0:
-    with open("dataset_clean.json", "r") as json_file:
+    with open("dataset.json", "r") as json_file:
         data = json.load(json_file)
 
     filter_tag = {"0": ["cancer", "tumor", "carcinoma", "sarcoma", "leukemia", "lymphoma"], \
@@ -66,11 +66,14 @@ else:
     userID = {}
     filter_data_sample = {}
     for category in filter_data.keys():
-        filter_data_sample[category] = {}
-        userID[category] = random.sample(list(filter_data[category].keys()), 3200)
-        print(userID[category][0:32])
-        for user in userID[category]:
-            filter_data_sample[category][user] = deepcopy(filter_data[category][user])
+        if category == "2":
+            filter_data_sample[category] = {}
+            userID[category] = random.sample(list(filter_data[category].keys()), 50000)
+            print(userID[category][0:32])
+            for user in userID[category]:
+                filter_data_sample[category][user] = deepcopy(filter_data[category][user])
+        else:
+            filter_data_sample[category] = deepcopy(filter_data[category])
     with open("dataset_clean_by_category_sample.json", "w") as json_file:
         json.dump(filter_data_sample, json_file)
         
