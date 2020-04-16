@@ -1,5 +1,6 @@
 import json
 import random
+random.seed(0)
 import argparse
 from copy import deepcopy
 from tqdm import tqdm
@@ -33,14 +34,16 @@ if args.phase == 0:
                     flag = 0
                     flag_category["0"] = 1
                     break
-            for tag in filter_tag["1"]:
-                if tag in query:
-                    flag = 1
-                    flag_category["1"] = 1
-                    break
+            if flag == 2:
+                for tag in filter_tag["1"]:
+                    if tag in query:
+                        flag = 1
+                        flag_category["1"] = 1
+                        break
             tmp["time"].append(time)
             tmp["query"].append(query)
             tmp["category"].append(flag)
+
         if flag_category["0"] == 1:
             filter_data["0"][user] = deepcopy(tmp)
             num_user["0"] += 1
