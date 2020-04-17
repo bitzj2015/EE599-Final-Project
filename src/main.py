@@ -79,10 +79,8 @@ if USE_CUDA:
     discriminator = discriminator.cuda()
     adversary = adversary.cuda()
 
-
-
 # Enter training phase
-if args.phase == "pretrain_G":
+if args.phase == "pretrain_gen":
     # Define optimizer and loss function for generator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
@@ -91,7 +89,7 @@ if args.phase == "pretrain_G":
     # Pretrain generator using MLE
     pretrain_gen(generator, train_loader, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA, PRE_EPOCH_NUM)
 
-elif args.phase == "pretrain_A":
+elif args.phase == "pretrain_adv":
     # Define optimizer and loss function for adversarial
     adv_criterion = nn.NLLLoss(reduction='sum')
     adv_optimizer = optim.Adam(generator.parameters(), lr=ADV_LR)
