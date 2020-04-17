@@ -100,3 +100,6 @@ elif args.phase == "pretrain_adv":
         adv_criterion = adv_criterion.cuda()
     # Pretrain adversary using CNN text classifier
     pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA, PRE_ADV_EPOCH_NUM)
+
+elif args.phase == "train_gap":
+    
