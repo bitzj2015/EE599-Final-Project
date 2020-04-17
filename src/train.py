@@ -60,7 +60,6 @@ def pretest_gen_epoch(model, dataloader, criterion, optimizer, model_path, use_c
         pred_query.append(index_map[pred_[i]])
     print("[INFO] Target query: ", target_query)
     print("[INFO] Predicted query: ", pred_query)
-    torch.save(model.state_dict(), model_path)
     return math.exp(total_loss / total_words)
 
 def pretrain_gen(generator, train_loader, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA, PRE_EPOCH_NUM):
@@ -89,8 +88,10 @@ Define pretrain module for adversary
 def pretrain_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_cuda=False):
     total_loss = 0.0
     total_acc = 0.0
+    count = 0
     for batch in tqdm(dataloader):
         data, target = batch['x'], batch['u'].squeeze()
+        # print(data.size(), target.size(0), target)
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         pred = model.forward(data)
@@ -100,13 +101,15 @@ def pretrain_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_
         loss.backward()
         optimizer.step()
         _, pred_ = torch.max(pred, axis=-1)
-        total_acc += (pred==target).sum().item() / target.shape[0]
+        total_acc += (pred_ == target).sum().item() / target.size(0)
+        count += 1
     torch.save(model.state_dict(), model_path)
-    return total_loss, total_acc
+    return total_loss, total_acc / count
 
 def pretest_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_cuda=False):
     total_loss = 0.0
     total_acc = 0.0
+    count = 0
     for batch in tqdm(dataloader):
         data, target = batch['x'], batch['u'].squeeze()
         if use_cuda:
@@ -116,9 +119,9 @@ def pretest_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_c
             loss = criterion(pred, target)
             total_loss += loss.item()
             _, pred_ = torch.max(pred, axis=-1)
-            total_acc += (pred==target).sum().item() / target.shape[0]
-    torch.save(model.state_dict(), model_path)
-    return total_loss, total_acc
+            total_acc += (pred_ == target).sum().item() / target.size(0)
+            count += 1
+    return total_loss, total_acc / count
 
 def pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA, PRE_EPOCH_NUM):
     print('[INFO] Pretrain adversary with CNN ...')
@@ -128,8 +131,8 @@ def pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimi
     test_acc_list = []
     for epoch in range(PRE_EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
-        train_loss, train_acc = pretrain_adv_epoch(adversary, train_loader, gen_criterion, gen_optimizer, ADV_PATH, USE_CUDA)
-        test_loss, test_acc = pretest_adv_epoch(adversary, test_loader, gen_criterion, gen_optimizer, ADV_PATH, USE_CUDA)
+        train_loss, train_acc = pretrain_adv_epoch(adversary, train_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA)
+        test_loss, test_acc = pretest_adv_epoch(adversary, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA)
         print('[INFO] End epoch [%d], \
                       loss (train, test): (%.4f, %.4f), \
                       accuracy (train, test): (%.4f, %.4f)'% \

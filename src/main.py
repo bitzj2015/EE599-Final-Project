@@ -34,12 +34,13 @@ np.random.seed(SEED)
 # Basic Training Paramters
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
-PRE_EPOCH_NUM = 100
+PRE_GEN_EPOCH_NUM = 100
+PRE_ADV_EPOCH_NUM = 25
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
 GEN_PATH = "../param/generator.pkl"
-ADV_PATH = "../param/generator.pkl"
+ADV_PATH = "../param/adversary.pkl"
 DIS_PATH = "../param/discriminator.pkl"
 
 # Get training and testing dataloader
@@ -58,16 +59,18 @@ gen_args = Gen_args(vocab_size=VOCAB_SIZE,
 dis_args = Dis_args(num_classes=2, 
                     vocab_size=VOCAB_SIZE, 
                     emb_dim=64, 
-                    filter_sizes=[3, 4, 5], 
-                    num_filters=[100, 100, 100], 
+                    filter_sizes=[3, 4, 5, 6, 7], 
+                    num_filters=[100, 100, 100, 100, 100], 
                     dropout=0.5)
 
 # Adversarial Parameters
 adv_args = Dis_args(num_classes=3, 
                     vocab_size=VOCAB_SIZE, 
                     emb_dim=64, 
-                    filter_sizes=[3,4,5], 
-                    num_filters=[100, 100, 100], 
+                    filter_sizes=[3, 4, 5], 
+                    num_filters=[150, 150, 150], 
+                    # filter_sizes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20],
+                    # num_filters=[100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160],
                     dropout=0.5)
 
 # Define Networks
@@ -87,13 +90,13 @@ if args.phase == "pretrain_gen":
     if USE_CUDA:
         gen_criterion = gen_criterion.cuda()
     # Pretrain generator using MLE
-    pretrain_gen(generator, train_loader, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA, PRE_EPOCH_NUM)
+    pretrain_gen(generator, train_loader, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA, PRE_GEN_EPOCH_NUM)
 
 elif args.phase == "pretrain_adv":
     # Define optimizer and loss function for adversarial
-    adv_criterion = nn.NLLLoss(reduction='sum')
-    adv_optimizer = optim.Adam(generator.parameters(), lr=ADV_LR)
+    adv_criterion = nn.NLLLoss(reduction='mean')
+    adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
     if USE_CUDA:
         adv_criterion = adv_criterion.cuda()
     # Pretrain adversary using CNN text classifier
-    pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA, PRE_EPOCH_NUM)
+    pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA, PRE_ADV_EPOCH_NUM)

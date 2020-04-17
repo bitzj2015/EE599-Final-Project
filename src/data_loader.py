@@ -24,11 +24,14 @@ def LoadData(data_path="../local/dataset_batch.json",
     # generate data list
     input_data = []
     label_data = []
+    count = {}
     for category in dataset.keys():
         if category == "max_seq_len":
             continue
         input_data += deepcopy(dataset[category])
         label_data += [int(category)] * len(dataset[category])
+        count[category] = len(dataset[category])
+    print("[INFO] Complete loading data, with # of {}".format(count))
     rd_index = np.arange(len(input_data))
     random.shuffle(rd_index)
     input_data = [input_data[i] for i in rd_index]

@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import weights_init
 
-class G_args(object):
+class Gen_args(object):
     def __init__(self, 
                  vocab_size=3000, 
                  emb_dim=300, 

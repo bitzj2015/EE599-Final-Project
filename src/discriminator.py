@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import weights_init
 
-class D_args(object):
+class Dis_args(object):
     def __init__(self, 
                  num_classes=2, 
                  vocab_size=3000, 
@@ -32,19 +32,21 @@ class Discriminator(nn.Module):
         self.highway = nn.Linear(sum(self.args.num_filters), sum(self.args.num_filters))
         self.dropout = nn.Dropout(p=self.args.dropout)
         self.fc = nn.Linear(sum(self.args.num_filters), self.args.num_classes)
-        self.softmax = nn.LogSoftmax()
         self.apply(weights_init)
 
-    def forward(self, x):
+    def forward(self, input):
         """
         Args:
             x: (batch_size * seq_len)
         """
-        emb = self.emb(x).unsqueeze(1)  # batch_size * 1 * seq_len * emb_dim
+        x = input[:,:,0]
+        mask = input[:,:,1].float()
+        emb = self.emb(x) * mask.unsqueeze(2)
+        emb = emb.unsqueeze(1)  # batch_size * 1 * seq_len * emb_dim
         convs = [F.relu(conv(emb)).squeeze(3) for conv in self.convs]  # [batch_size * num_filter * length]
         pools = [F.max_pool1d(conv, conv.size(2)).squeeze(2) for conv in convs] # [batch_size * num_filter]
         pred = torch.cat(pools, 1)  # batch_size * num_filters_sum
         highway = self.highway(pred)
-        pred = F.sigmoid(highway) *  F.relu(highway) + (1. - F.sigmoid(highway)) * pred
-        pred = self.softmax(self.fc(self.dropout(pred)))
+        pred = torch.sigmoid(highway) *  F.relu(highway) + (1. - torch.sigmoid(highway)) * pred
+        pred = F.log_softmax(self.fc(self.dropout(pred)), dim=1)
         return pred
