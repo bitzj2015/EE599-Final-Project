@@ -33,7 +33,6 @@ np.random.seed(SEED)
 
 # Basic Training Paramters
 BATCH_SIZE = 64
-VOCAB_SIZE = word_map["*"] + 1
 USE_CUDA = args.cuda
 PRE_EPOCH_NUM = 100
 GEN_LR = 0.01
@@ -42,6 +41,13 @@ DIS_LR = 0.01
 GEN_PATH = "../param/generator.pkl"
 ADV_PATH = "../param/generator.pkl"
 DIS_PATH = "../param/discriminator.pkl"
+
+# Get training and testing dataloader
+train_loader, test_loader, \
+    MAX_SEQ_LEN, VOCAB_SIZE = LoadData(data_path="../data/dataset_batch.json", 
+                                       word2id_path="../data/word_map.json", 
+                                       train_split=0.8,
+                                       BATCH_SIZE=64)
 
 # Genrator Parameters
 gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
@@ -63,12 +69,6 @@ adv_args = Dis_args(num_classes=3,
                     filter_sizes=[3,4,5], 
                     num_filters=[100, 100, 100], 
                     dropout=0.5)
-
-# Get training and testing dataloader
-train_loader, test_loader, MAX_SEQ_LEN = LoadData(data_path="../data/dataset_batch.json", 
-                                                  word2id_path="../data/word_map.json", 
-                                                  train_split=0.8,
-                                                  BATCH_SIZE=64)
 
 # Define Networks
 generator = Generator(gen_args, USE_CUDA)

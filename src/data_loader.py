@@ -19,6 +19,7 @@ def LoadData(data_path="../local/dataset_batch.json",
     for key in word_map.keys():
         index_map[word_map[key]] = key
     MAX_SEQ_LEN = dataset["max_seq_len"]
+    VOCAB_SIZE = word_map["*"] + 1 # Note: the last word is for PAD
 
     # generate data list
     input_data = []
@@ -53,4 +54,4 @@ def LoadData(data_path="../local/dataset_batch.json",
                             batch_size=BATCH_SIZE, 
                             shuffle=True)
 
-    return train_loader, test_loader, MAX_SEQ_LEN
+    return train_loader, test_loader, MAX_SEQ_LEN, VOCAB_SIZE
