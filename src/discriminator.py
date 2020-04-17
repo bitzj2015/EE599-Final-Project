@@ -33,7 +33,6 @@ class Discriminator(nn.Module):
         self.dropout = nn.Dropout(p=self.args.dropout)
         self.fc = nn.Linear(sum(self.args.num_filters), self.args.num_classes)
         self.softmax = nn.LogSoftmax()
-        self.init_parameters()
         self.apply(weights_init)
 
     def forward(self, x):

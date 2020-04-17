@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -21,24 +22,36 @@ def weights_init(m):
 
 class MyDataset(Dataset):
     def __init__(self,
-                input_data,
-                label_data,
-                transform=None):
+                 input_data,
+                 label_data,
+                 word_map,
+                 max_len,
+                 transform=None):
         self.input = input_data
         self.label = label_data
+        self.word_map = word_map
+        self.padding_value = word_map["*"]
+        self.max_len = max_len
         self.transform = transform
 
     def __len__(self):
-        return np.shape(self.label)[0]
+        return len(self.label)
 
     def __getitem__(self, idx):
         if type(idx) == torch.Tensor:
             idx = idx.item()
         data = self.input[idx]
-        d1,d2,d3=np.shape(data)
-        data = data.astype('double').reshape(-1,d1,d2,d3)
+        data = [self.word_map[token] for token in data]
+        cur_len = len(data)
+        data = np.array(data).astype('int')
+        mask = data * 0 + 1
+        data = np.pad(data, (0, self.max_len - cur_len), 'constant', \
+                        constant_values=(0, self.padding_value)).reshape(-1)
+        mask = np.pad(mask, (0, self.max_len - cur_len), 'constant', \
+                        constant_values=(0, 0)).reshape(-1)
+        data = np.stack([data,mask], axis=-1)
         user = self.label[idx]
-        user = user.astype('int').reshape(-1,1)
+        user = np.array(user).astype('int').reshape(-1)
         sample = {'x':data, 'u':user}
         if self.transform:
             sample = self.transform(sample)

@@ -117,8 +117,9 @@ print("[INFO] # of samples in each category: ", count)
 with open("dataset_final.json", "w") as json_file:
     json.dump(dataset, json_file)
 
-word_map = {"SOS":0, "EOS":1, "*":2}
+word_map = {"SOS": 0, "EOS": 1, "POS": 2, "*": 3}
 data_batch = {}
+max_seq_len = 0
 for category in dataset.keys():
     data_batch[category] = {}
     data_by_category = dataset[category]
@@ -127,12 +128,17 @@ for category in dataset.keys():
         len_tokens = 0
         for query in data_by_category[user]["query"]:
             query_token = prepare_text(query)
-            tokens += deepcopy(["<SOS>"] + query_token + ["<EOS>"])
-            len_tokens += len(query_token)
+            if len(query_token) > 0:
+                tokens += deepcopy(query_token + ["<POS>"])
+                len_tokens += len(query_token)
         if len_tokens >= 10 and len_tokens <= 50:
-            data_batch[category][user] = deepcopy(tokens)
+            data_batch[category][user] = deepcopy(["<SOS>"] + tokens[0:-1] + ["<EOS>"])
+            if max_seq_len < len(tokens) + 1:
+                max_seq_len = len(tokens) + 1
 
 data_sample = {}
+data_sample["max_seq_len"] = max_seq_len
+print("[INFO]: Maximal data sequence length: ", data_sample["max_seq_len"])
 for category in data_batch.keys():
     print("[INFO] # of samples in category {}: ".format(category), len(data_batch[category].keys()))
     data_sample[category] = []

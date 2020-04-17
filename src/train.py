@@ -10,53 +10,62 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.autograd import Variable
 
 from generator import Generator, G_args
 from discriminator import Discriminator, D_args
 from rollout import Rollout
+from utils import MyDataset
+from torch.utils.data import DataLoader
 
 parser = argparse.ArgumentParser(description='Training Parameter')
-parser.add_argument('--cuda', action='store', default=None, type=int)
+parser.add_argument('--cuda', action='store', default=None, type=int, default=0)
+parser.add_argument('--batch_size', help="batch size during training", type=int, default=64)
+
 args = parser.parse_args()
 print(args)
 
+with open("../data/word_map.json", "r") as json_file:
+    word_map = json.load(json_file)
+with open("../data/dataset_batch.json", "r") as json_file:
+    dataset = json.load(json_file)
+
 # Basic Training Paramters
-SEED = 88
-BATCH_SIZE = 64
-TOTAL_BATCH = 200
-GENERATED_NUM = 10000
-POSITIVE_FILE = 'real.data'
-NEGATIVE_FILE = 'gene.data'
-EVAL_FILE = 'eval.data'
-VOCAB_SIZE = 5000
-PRE_EPOCH_NUM = 120
+SEED = 0
+BATCH_SIZE = args.batch_size
+VOCAB_SIZE = word_map["*"]
+MAX_SEQ_LEN = dataset["max_seq_len"]
 
-
-g_sequence_len = 20
 # Genrator Parameters
-g_args = G_args(vocab_size=3000, 
-                emb_dim=32, 
-                hidden_dim=32)
+g_args = G_args(vocab_size=VOCAB_SIZE, 
+                emb_dim=64, 
+                hidden_dim=64)
 # Discriminator Parameters
 d_args = D_args(num_classes=2, 
-                vocab_size=3000, 
+                vocab_size=VOCAB_SIZE, 
                 emb_dim=64, 
-                filter_sizes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20], 
-                num_filters=[100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160], 
-                dropout=0.75)
+                filter_sizes=[3, 4, 5], 
+                num_filters=[100, 100, 100], 
+                dropout=0.5)
 # Adversarial Parameters
 a_args = D_args(num_classes=3, 
-                vocab_size=3000, 
-                emb_dim=300, 
+                vocab_size=VOCAB_SIZE, 
+                emb_dim=64, 
                 filter_sizes=[3,4,5], 
-                num_filters=[64,64,64], 
-                dropout=0.2)
+                num_filters=[100, 100, 100], 
+                dropout=0.5)
+# Dataset Parameters
+my_dataset = MyDataset(dataset=dataset,
+                    word_map=word_map,
+                    max_len=MAX_SEQ_LEN)
+
+my_dataLoader = DataLoader(dataset=Dataset, 
+                        batch_size=BATCH_SIZE, 
+                        shuffle=True)
 
 def generate_samples(model, batch_size, generated_num, output_file):
     samples = []
     for _ in range(int(generated_num / batch_size)):
-        sample = model.sample(batch_size, g_sequence_len).cpu().data.numpy().tolist()
+        sample = model.sample(batch_size, MAX_SEQ_LEN).cpu().data.numpy().tolist()
         samples.extend(sample)
     with open(output_file, 'w') as fout:
         for sample in samples:
@@ -189,7 +198,7 @@ def main():
     for total_batch in range(TOTAL_BATCH):
         ## Train the generator for one step
         for it in range(1):
-            samples = generator.sample(BATCH_SIZE, g_sequence_len)
+            samples = generator.sample(BATCH_SIZE, MAX_SEQ_LEN)
             # construct the input to the genrator, add zeros before samples and delete the last column
             zeros = torch.zeros((BATCH_SIZE, 1)).type(torch.LongTensor)
             if samples.is_cuda:
