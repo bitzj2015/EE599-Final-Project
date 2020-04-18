@@ -4,6 +4,8 @@ import math
 import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from rollout import Rollout
+from utils import GANLoss
 '''
 Define pretrain module for generator
 '''
@@ -12,13 +14,13 @@ def pretrain_gen_epoch(model,
                        criterion, 
                        optimizer, 
                        model_path, 
-                       use_cuda=False):
+                       USE_CUDA=False):
     total_loss = 0.
     total_words = 0.
     for batch in tqdm(dataloader):
         data = batch["x"]
         target = batch["x"][:,:,0]
-        if use_cuda:
+        if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         target = target.contiguous().view(-1)
         pred = model.forward(data)
@@ -46,13 +48,13 @@ def pretest_gen_epoch(model,
                       criterion, 
                       optimizer, 
                       model_path, 
-                      use_cuda=False):
+                      USE_CUDA=False):
     total_loss = 0.
     total_words = 0.
     for batch in tqdm(dataloader):
         data = batch["x"]
         target = batch["x"][:,:,0]
-        if use_cuda:
+        if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         target = target.contiguous().view(-1)
         with torch.no_grad():
@@ -122,18 +124,20 @@ def train_adv_epoch(model,
                     criterion, 
                     optimizer, 
                     model_path, 
-                    use_cuda=False):
+                    USE_CUDA=False):
     total_loss = 0.0
     total_acc = 0.0
+    total_words = 0.0
     count = 0
     for batch in tqdm(dataloader):
         data, target = batch['x'], batch['u'].squeeze()
         # print(data.size(), target.size(0), target)
-        if use_cuda:
+        if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         pred = model.forward(data)
         loss = criterion(pred, target)
         total_loss += loss.item()
+        total_words += data.size(0) * data.size(1)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -141,29 +145,31 @@ def train_adv_epoch(model,
         total_acc += (pred_ == target).sum().item() / target.size(0)
         count += 1
     torch.save(model.state_dict(), model_path)
-    return total_loss / count, total_acc / count
+    return math.exp(total_loss / total_words), total_acc / count
 
 def test_adv_epoch(model, 
                    dataloader, 
                    criterion, 
                    optimizer, 
                    model_path, 
-                   use_cuda=False):
+                   USE_CUDA=False):
     total_loss = 0.0
     total_acc = 0.0
+    total_words = 0.0
     count = 0
     for batch in tqdm(dataloader):
         data, target = batch['x'], batch['u'].squeeze()
-        if use_cuda:
+        if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         with torch.no_grad():
             pred = model.forward(data)
             loss = criterion(pred, target)
             total_loss += loss.item()
+            total_words += data.size(0) * data.size(1)
             _, pred_ = torch.max(pred, axis=-1)
             total_acc += (pred_ == target).sum().item() / target.size(0)
             count += 1
-    return total_loss / count, total_acc / count
+    return math.exp(total_loss / total_words), total_acc / count
 
 def train_adv(adversary, 
               train_loader, 
@@ -242,6 +248,7 @@ def train_dis(discriminator,
         print('[INFO] Start training epoch [%d] ...'% (epoch))   
         total_loss = 0.0
         total_acc = 0.0
+        total_words = 0.0
         count = 0
         for batch in tqdm(train_loader):
             data = batch['x']
@@ -265,6 +272,7 @@ def train_dis(discriminator,
             pred_batch = discriminator(data_batch)
             loss = dis_criterion(pred_batch, label_batch)
             total_loss += loss.item()
+            total_words += data_batch.size(0) * data_batch.size(1)
             dis_optimizer.zero_grad()
             loss.backward()
             dis_optimizer.step()
@@ -272,7 +280,7 @@ def train_dis(discriminator,
             total_acc += (pred_batch_ == label_batch).sum().item() / (batch_size * 2)
             count += 1
         total_acc = total_acc / count
-        total_loss = total_loss / count
+        total_loss = math.exp(total_loss / total_words)
         train_loss_list.append(total_loss)
         train_acc_list.append(total_acc)
         torch.save(discriminator.state_dict(), DIS_PATH)
@@ -283,6 +291,7 @@ def train_dis(discriminator,
     print('[INFO] Start testing ...')   
     test_loss = 0.0
     test_acc = 0.0
+    test_words = 0.0
     count = 0
     for batch in tqdm(test_loader):
         data = batch['x']
@@ -306,17 +315,96 @@ def train_dis(discriminator,
         pred_batch = discriminator(data_batch)
         loss = dis_criterion(pred_batch, label_batch)
         test_loss += loss.item()
+        test_words += data_batch.size(0) * data_batch.size(1)
         dis_optimizer.zero_grad()
         loss.backward()
         dis_optimizer.step()
         _, pred_batch_ = torch.max(pred_batch, axis=-1)
         test_acc += (pred_batch_ == label_batch).sum().item() / (batch_size * 2)
         count += 1 
-    test_loss = test_loss / count
+    test_loss = math.exp(test_loss / test_words)
     test_acc = test_acc / count
     print('[INFO] Testing, \
                     loss: %.4f, accuracy: %.4f'% \
                     (test_loss, test_acc))
     return train_loss_list, train_acc_list, test_loss, test_acc
 
+'''
+Define training gap
+'''
+def train_gap(model,
+              criterion,
+              optimizer,
+              train_loader,
+              test_loader,
+              PATH,
+              USE_CUDA,
+              EPOCH_NUM,
+              MC_NUM=16,
+              W=[0.2,0.2,0.6]):
+    generator, discriminator, adversary = model
+    gen_criterion, dis_criterion, adv_criterion = criterion
+    gen_optimizer, dis_optimizer, adv_optimizer = optimizer
+    GEN_PATH, DIS_PATH, ADV_PATH = PATH
 
+    # Adversarial Training
+    rollout = Rollout(generator, 0.8)
+
+    print("[INFO] Start training GAP ...")
+    gen_dis_loss = GANLoss()
+    gen_adv_loss = GANLoss()
+    W = totch.Tensor(W)
+    if USE_CUDA:
+        gen_dis_loss = gen_dis_loss.cuda()
+        gen_adv_loss = gen_adv_loss.cuda()
+        W = W.cuda()
+
+    for epoch in range(EPOCH_NUM):
+        ## Train the generator for one step
+        for batch in tqdm(data_loader):
+            data, category = batch['x'], batch['u'].squeeze()
+            target = data
+            if USE_CUDA:
+                data, category = data.cuda(), category.cuda(), target.cuda()
+            batch_size = data.size(0)
+            samples, pred = generator.sample(batch_size, x_gen=None, target=target)
+            # calculate the reward
+            dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, 16, discriminator, adversary)
+            dis_rewards = torch.Tensor(dis_rewards)
+            dis_rewards = torch.exp(dis_rewards).contiguous().view((-1,))
+            adv_rewards = torch.Tensor(adv_rewards)
+            adv_rewards = torch.exp(adv_rewards).contiguous().view((-1,))
+            if USE_CUDA:
+                dis_rewards = dis_rewards.cuda()
+                adv_rewards = adv_rewards.cuda()
+            dis_loss = gen_dis_loss(pred, target, dis_rewards)
+            adv_loss = gen_adv_loss(pred, target, adv_rewards)
+            mle_loss = gen_criterion(pred, target[:, :, 0])
+            gen_gap_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
+            gen_optimizer.zero_grad()
+            gen_gap_loss.backward()
+            gen_optimizer.step()
+            rollout.update_params()
+
+        if epoch % 5 == 0:
+            train_dis(discriminator, 
+                      generator,
+                      train_loader,
+                      test_loader,
+                      dis_criterion,
+                      dis_optimizer,
+                      DIS_PATH,
+                      USE_CUDA, 
+                      EPOCH_NUM=5,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=False)
+            train_adv(adversary, 
+                      train_loader, 
+                      test_loader, 
+                      adv_criterion,
+                      adv_optimizer, 
+                      ADV_PATH, 
+                      USE_CUDA, 
+                      EPOCH_NUM=5,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=True)

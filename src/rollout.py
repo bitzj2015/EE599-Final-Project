@@ -33,7 +33,7 @@ class Rollout(object):
             # MC sampling times
             for l in range(1, seq_len):
                 data = x_gen[:, 0:l]
-                samples = self.own_model.sample(batch_size, data, target)
+                samples, _ = self.own_model.sample(batch_size, data, target)
                 samples_ = torch.stack([samples, target[:,:,1]], axis=2)
                 dis_pred = discriminator(samples_)
                 dis_pred = dis_pred.cpu().data[:,1].numpy()

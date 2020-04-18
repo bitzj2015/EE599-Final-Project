@@ -37,6 +37,9 @@ USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 100
 PRE_ADV_EPOCH_NUM = 25
 PRE_DIS_EPOCH_NUM = 5
+GAP_EPOCH_NUM = 20
+MC_NUM = 16
+GAP_W = [0.2, 0.2, 0.6]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -103,7 +106,7 @@ if args.phase == "pretrain_gen":
 
 elif args.phase == "pretrain_adv":
     # Define optimizer and loss function for adversarial
-    adv_criterion = nn.NLLLoss(reduction='mean')
+    adv_criterion = nn.NLLLoss(reduction='sum')
     adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
     if USE_CUDA:
         adv_criterion = adv_criterion.cuda()
@@ -121,10 +124,10 @@ elif args.phase == "pretrain_adv":
 
 elif args.phase == "pretrain_dis":
     # Define optimizer and loss function for discriminator
-    dis_criterion = nn.NLLLoss(reduction='mean')
+    dis_criterion = nn.NLLLoss(reduction='sum')
     dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
     if USE_CUDA:
-        adv_criterion = adv_criterion.cuda()
+        dis_criterion = dis_criterion.cuda()
     # Pretrain discriminator using CNN text classifier
     train_dis(discriminator, 
               generator,
@@ -137,3 +140,26 @@ elif args.phase == "pretrain_dis":
               PRE_DIS_EPOCH_NUM,
               PHASE="pretrain", 
               PLOT=False)
+elif args.phase == "train_gap":
+    # Define optimizer and loss function for discriminator
+    gen_criterion = nn.NLLLoss(reduction='sum')
+    gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
+    dis_criterion = nn.NLLLoss(reduction='sum')
+    dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
+    adv_criterion = nn.NLLLoss(reduction='sum')
+    adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
+    if USE_CUDA:
+        gen_criterion = gen_criterion.cuda()
+        dis_criterion = dis_criterion.cuda()
+        adv_criterion = adv_criterion.cuda()
+    # Pretrain discriminator using CNN text classifier
+    train_gap(model=[generator, discriminator, adversary],
+              criterion=[gen_criterion, dis_criterion, adv_criterion],
+              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
+              train_loader,
+              test_loader,
+              PATH,
+              USE_CUDA,
+              GAP_EPOCH_NUM,
+              MC_NUM=MC_NUM,
+              W=GAP_W)
