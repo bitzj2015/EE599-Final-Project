@@ -15,7 +15,7 @@ import torch.optim as optim
 # Load self-defined module
 from generator import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
-from train import pretrain_gen, pretrain_adv
+from train import pretrain_gen, train_adv, train_dis
 from data_loader import LoadData
 from rollout import Rollout
 
@@ -36,6 +36,7 @@ BATCH_SIZE = 64
 USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 100
 PRE_ADV_EPOCH_NUM = 25
+PRE_DIS_EPOCH_NUM = 5
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -59,8 +60,8 @@ gen_args = Gen_args(vocab_size=VOCAB_SIZE,
 dis_args = Dis_args(num_classes=2, 
                     vocab_size=VOCAB_SIZE, 
                     emb_dim=64, 
-                    filter_sizes=[3, 4, 5, 6, 7], 
-                    num_filters=[100, 100, 100, 100, 100], 
+                    filter_sizes=[3, 4, 5], 
+                    num_filters=[150, 150, 150], 
                     dropout=0.5)
 
 # Adversarial Parameters
@@ -90,7 +91,15 @@ if args.phase == "pretrain_gen":
     if USE_CUDA:
         gen_criterion = gen_criterion.cuda()
     # Pretrain generator using MLE
-    pretrain_gen(generator, train_loader, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA, PRE_GEN_EPOCH_NUM)
+    pretrain_gen(generator, 
+                 train_loader, 
+                 test_loader, 
+                 gen_criterion, 
+                 gen_optimizer, 
+                 GEN_PATH, 
+                 USE_CUDA, 
+                 PRE_GEN_EPOCH_NUM,
+                 PLOT=True)
 
 elif args.phase == "pretrain_adv":
     # Define optimizer and loss function for adversarial
@@ -99,7 +108,32 @@ elif args.phase == "pretrain_adv":
     if USE_CUDA:
         adv_criterion = adv_criterion.cuda()
     # Pretrain adversary using CNN text classifier
-    pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA, PRE_ADV_EPOCH_NUM)
+    train_adv(adversary, 
+              train_loader, 
+              test_loader, 
+              adv_criterion,
+              adv_optimizer, 
+              ADV_PATH, 
+              USE_CUDA, 
+              PRE_ADV_EPOCH_NUM,
+              PHASE="pretrain",
+              PLOT=True)
 
-elif args.phase == "train_gap":
-    
+elif args.phase == "pretrain_dis":
+    # Define optimizer and loss function for discriminator
+    dis_criterion = nn.NLLLoss(reduction='mean')
+    dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
+    if USE_CUDA:
+        adv_criterion = adv_criterion.cuda()
+    # Pretrain discriminator using CNN text classifier
+    train_dis(discriminator, 
+              generator,
+              train_loader,
+              test_loader,
+              dis_criterion,
+              dis_optimizer,
+              DIS_PATH,
+              USE_CUDA, 
+              PRE_DIS_EPOCH_NUM,
+              PHASE="pretrain", 
+              PLOT=False)

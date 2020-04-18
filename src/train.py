@@ -7,7 +7,12 @@ import matplotlib.pyplot as plt
 '''
 Define pretrain module for generator
 '''
-def pretrain_gen_epoch(model, dataloader, criterion, optimizer, model_path, use_cuda=False):
+def pretrain_gen_epoch(model, 
+                       dataloader, 
+                       criterion, 
+                       optimizer, 
+                       model_path, 
+                       use_cuda=False):
     total_loss = 0.
     total_words = 0.
     for batch in tqdm(dataloader):
@@ -36,7 +41,12 @@ def pretrain_gen_epoch(model, dataloader, criterion, optimizer, model_path, use_
     torch.save(model.state_dict(), model_path)
     return math.exp(total_loss / total_words)
 
-def pretest_gen_epoch(model, dataloader, criterion, optimizer, model_path, use_cuda=False):
+def pretest_gen_epoch(model, 
+                      dataloader, 
+                      criterion, 
+                      optimizer, 
+                      model_path, 
+                      use_cuda=False):
     total_loss = 0.
     total_words = 0.
     for batch in tqdm(dataloader):
@@ -62,30 +72,57 @@ def pretest_gen_epoch(model, dataloader, criterion, optimizer, model_path, use_c
     print("[INFO] Predicted query: ", pred_query)
     return math.exp(total_loss / total_words)
 
-def pretrain_gen(generator, train_loader, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA, PRE_EPOCH_NUM):
+def pretrain_gen(generator, 
+                 train_loader, 
+                 test_loader, 
+                 gen_criterion, 
+                 gen_optimizer, 
+                 GEN_PATH, 
+                 USE_CUDA, 
+                 PRE_EPOCH_NUM,
+                 PLOT=True):
     print('[INFO] Pretrain generator with MLE ...')
     train_loss_list = []
     test_loss_list = []
     for epoch in range(PRE_EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
-        train_loss = pretrain_gen_epoch(generator, train_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA)
-        test_loss = pretest_gen_epoch(generator, test_loader, gen_criterion, gen_optimizer, GEN_PATH, USE_CUDA)
-        print('[INFO] End epoch [%d], train Loss: %.4f, test loss: %.4f'% (epoch, train_loss, test_loss))
+        train_loss = pretrain_gen_epoch(generator, 
+                                        train_loader, 
+                                        gen_criterion, 
+                                        gen_optimizer, 
+                                        GEN_PATH, 
+                                        USE_CUDA)
+        test_loss = pretest_gen_epoch(generator, 
+                                      test_loader, 
+                                      gen_criterion, 
+                                      gen_optimizer, 
+                                      GEN_PATH, 
+                                      USE_CUDA)
+        print('[INFO] End epoch [%d], \
+                      train Loss: %.4f, \
+                      test loss: %.4f'% \
+                      (epoch, train_loss, test_loss))
         train_loss_list.append(train_loss)
         test_loss_list.append(test_loss)
-    # plot results
-    plt.plot(train_loss_list)
-    plt.plot(test_loss_list)
-    plt.legend(["train", "test"])
-    plt.xlabel("epoch")
-    plt.ylabel("loss")
-    plt.title("pretrained generator (training loss)")
-    plt.savefig("../result/pretrained_generator_loss.png")
+    if PLOT:
+        # plot results
+        plt.plot(train_loss_list)
+        plt.plot(test_loss_list)
+        plt.legend(["train", "test"])
+        plt.xlabel("epoch")
+        plt.ylabel("loss")
+        plt.title("pretrained generator (training loss)")
+        plt.savefig("../result/pretrained_generator_loss.png")
 
 '''
 Define pretrain module for adversary
 '''
-def pretrain_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_cuda=False):
+def train_adv_epoch(model, 
+                    dataloader, 
+                    criterion, 
+                    optimizer, 
+                    model_path, 
+                    use_cuda=False):
     total_loss = 0.0
     total_acc = 0.0
     count = 0
@@ -104,9 +141,14 @@ def pretrain_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_
         total_acc += (pred_ == target).sum().item() / target.size(0)
         count += 1
     torch.save(model.state_dict(), model_path)
-    return total_loss, total_acc / count
+    return total_loss / count, total_acc / count
 
-def pretest_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_cuda=False):
+def test_adv_epoch(model, 
+                   dataloader, 
+                   criterion, 
+                   optimizer, 
+                   model_path, 
+                   use_cuda=False):
     total_loss = 0.0
     total_acc = 0.0
     count = 0
@@ -121,18 +163,37 @@ def pretest_adv_epoch(model, dataloader, criterion, optimizer, model_path, use_c
             _, pred_ = torch.max(pred, axis=-1)
             total_acc += (pred_ == target).sum().item() / target.size(0)
             count += 1
-    return total_loss, total_acc / count
+    return total_loss / count, total_acc / count
 
-def pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA, PRE_EPOCH_NUM):
+def train_adv(adversary, 
+              train_loader, 
+              test_loader, 
+              adv_criterion, 
+              adv_optimizer, 
+              ADV_PATH, 
+              USE_CUDA, 
+              EPOCH_NUM,
+              PHASE="pretrain", 
+              PLOT=False):
     print('[INFO] Pretrain adversary with CNN ...')
     train_loss_list = []
     test_loss_list = []
     train_acc_list = []
     test_acc_list = []
-    for epoch in range(PRE_EPOCH_NUM):
+    for epoch in range(EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
-        train_loss, train_acc = pretrain_adv_epoch(adversary, train_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA)
-        test_loss, test_acc = pretest_adv_epoch(adversary, test_loader, adv_criterion, adv_optimizer, ADV_PATH, USE_CUDA)
+        train_loss, train_acc = train_adv_epoch(adversary, 
+                                                train_loader, 
+                                                adv_criterion, 
+                                                adv_optimizer, 
+                                                ADV_PATH, 
+                                                USE_CUDA)
+        test_loss, test_acc = test_adv_epoch(adversary, 
+                                             test_loader, 
+                                             adv_criterion, 
+                                             adv_optimizer, 
+                                             ADV_PATH, 
+                                             USE_CUDA)
         print('[INFO] End epoch [%d], \
                       loss (train, test): (%.4f, %.4f), \
                       accuracy (train, test): (%.4f, %.4f)'% \
@@ -141,18 +202,121 @@ def pretrain_adv(adversary, train_loader, test_loader, adv_criterion, adv_optimi
         test_loss_list.append(test_loss)
         train_acc_list.append(train_acc)
         test_acc_list.append(test_acc)
-    # plot results
-    fig, ax = plt.subplots(1, 2, figsize=(14,5))
-    ax[0].plot(train_loss_list)
-    ax[0].plot(test_loss_list)
-    ax[0].legend(["train", "test"])
-    ax[0].set_xlabel("epoch")
-    ax[0].set_ylabel("loss")
-    ax[0].set_title("pretrained generator (training loss)")
-    ax[1].plot(train_acc_list)
-    ax[1].plot(test_acc_list)
-    ax[1].legend(["train", "test"])
-    ax[1].set_xlabel("epoch")
-    ax[1].set_ylabel("accuracy")
-    ax[1].set_title("pretrained generator (training accuracy)")
-    fig.savefig("../result/pretrained_adversary_result.png")
+    if PLOT:
+        # plot results
+        fig, ax = plt.subplots(1, 2, figsize=(14,5))
+        ax[0].plot(train_loss_list)
+        ax[0].plot(test_loss_list)
+        ax[0].legend(["train", "test"])
+        ax[0].set_xlabel("epoch")
+        ax[0].set_ylabel("loss")
+        ax[0].set_title(PHASE + " generator (training loss)")
+        ax[1].plot(train_acc_list)
+        ax[1].plot(test_acc_list)
+        ax[1].legend(["train", "test"])
+        ax[1].set_xlabel("epoch")
+        ax[1].set_ylabel("accuracy")
+        ax[1].set_title(PHASE + " generator (training accuracy)")
+        fig.savefig("../result/" + PHASE + "_adversary_result.png")
+
+'''
+Define train discriminator
+'''
+def train_dis(discriminator, 
+              generator,
+              train_loader,
+              test_loader,
+              dis_criterion,
+              dis_optimizer,
+              DIS_PATH,
+              USE_CUDA, 
+              EPOCH_NUM,
+              PHASE="pretrain", 
+              PLOT=False):
+    train_loss_list = []
+    test_loss_list = []
+    train_acc_list = []
+    test_acc_list = []
+
+    for epoch in range(EPOCH_NUM):
+        print('[INFO] Start training epoch [%d] ...'% (epoch))   
+        total_loss = 0.0
+        total_acc = 0.0
+        count = 0
+        for batch in tqdm(train_loader):
+            data = batch['x']
+            batch_size = data.size(0)
+            seq_len = data.size(1)
+            label = torch.ones((batch_size, 1)).long()
+            label_ = torch.zeros((batch_size, 1)).long()
+            if USE_CUDA:
+                data = data.cuda()
+                label = label.cuda()
+                label_ = label_.cuda()
+            pred = generator.forward(data)
+            _, pred_ = torch.max(pred, axis=-1)
+            pred_ = pred_.view(batch_size, -1)
+            if pred_.size(1) != seq_len:
+                print("[ERR] Check dimension!!!")
+            data_ = torch.stack([pred_, data[:, :, 1]], axis=2)
+            data_batch = torch.cat([data, data_], axis=0)
+            label_batch = torch.cat([label, label_], axis=0)
+            label_batch = label_batch.contiguous().view(-1)
+            pred_batch = discriminator(data_batch)
+            loss = dis_criterion(pred_batch, label_batch)
+            total_loss += loss.item()
+            dis_optimizer.zero_grad()
+            loss.backward()
+            dis_optimizer.step()
+            _, pred_batch_ = torch.max(pred_batch, axis=-1)
+            total_acc += (pred_batch_ == label_batch).sum().item() / (batch_size * 2)
+            count += 1
+        total_acc = total_acc / count
+        total_loss = total_loss / count
+        train_loss_list.append(total_loss)
+        train_acc_list.append(total_acc)
+        torch.save(discriminator.state_dict(), DIS_PATH)
+        print('[INFO] End training epoch [%d], \
+                      loss: %.4f, accuracy: %.4f'% \
+                      (epoch, total_loss, total_acc))
+
+    print('[INFO] Start testing ...')   
+    test_loss = 0.0
+    test_acc = 0.0
+    count = 0
+    for batch in tqdm(test_loader):
+        data = batch['x']
+        batch_size = data.size(0)
+        seq_len = data.size(1)
+        label = torch.ones((batch_size, 1)).long()
+        label_ = torch.zeros((batch_size, 1)).long()
+        if USE_CUDA:
+            data = data.cuda()
+            label = label.cuda()
+            label_ = label_.cuda()
+        pred = generator.forward(data)
+        _, pred_ = torch.max(pred, axis=-1)
+        pred_ = pred_.view(batch_size, -1)
+        if pred_.size(1) != seq_len:
+            print("[ERR] Check dimension!!!")
+        data_ = torch.stack([pred_, data[:, :, 1]], axis=2)
+        data_batch = torch.cat([data, data_], axis=0)
+        label_batch = torch.cat([label, label_], axis=0)
+        label_batch = label_batch.contiguous().view(-1)
+        pred_batch = discriminator(data_batch)
+        loss = dis_criterion(pred_batch, label_batch)
+        test_loss += loss.item()
+        dis_optimizer.zero_grad()
+        loss.backward()
+        dis_optimizer.step()
+        _, pred_batch_ = torch.max(pred_batch, axis=-1)
+        test_acc += (pred_batch_ == label_batch).sum().item() / (batch_size * 2)
+        count += 1 
+    test_loss = test_loss / count
+    test_acc = test_acc / count
+    print('[INFO] Testing, \
+                    loss: %.4f, accuracy: %.4f'% \
+                    (test_loss, test_acc))
+    return train_loss_list, train_acc_list, test_loss, test_acc
+
+

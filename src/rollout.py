@@ -34,9 +34,10 @@ class Rollout(object):
             for l in range(1, seq_len):
                 data = x_gen[:, 0:l]
                 samples = self.own_model.sample(batch_size, data, target)
-                dis_pred = discriminator(samples)
+                samples_ = torch.stack([samples, target[:,:,1]], axis=2)
+                dis_pred = discriminator(samples_)
                 dis_pred = dis_pred.cpu().data[:,1].numpy()
-                adv_pred = adversary(samples)
+                adv_pred = adversary(samples_)
                 adv_pred = torch.gather(adv_pred, 1, category.view(batch_size,1)).cpu().numpy().view(-1)
                 adv_pred = 1 - adv_pred # batch_size
                 if i == 0:
