@@ -378,10 +378,10 @@ def train_gap(model,
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
             dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
-            dis_acc = np.mean(dis_rewards[:, -1])
-            adv_acc = 1 - np.mean(adv_rewards[:, -1])
-            dis_rewards = torch.Tensor(dis_rewards).contiguous().view(-1)
-            adv_rewards = torch.Tensor(adv_rewards).contiguous().view(-1)
+            dis_acc = np.mean(dis_rewards[:, -1].data.cpu().numpy())
+            adv_acc = 1 - np.mean(adv_rewards[:, -1].data.cpu().numpy())
+            dis_rewards = dis_rewards.contiguous().view(-1)
+            adv_rewards = adv_rewards.contiguous().view(-1)
             print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
             print(dis_rewards, adv_rewards)
             if USE_CUDA:
@@ -395,7 +395,8 @@ def train_gap(model,
                 format(epoch, step, mle_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
             csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
             writer = csv.writer(csvFile)
-            writer.writerow([epoch, step, mle_loss, dis_loss, adv_loss, dis_acc, adv_acc])
+            writer.writerow([epoch, step, mle_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
+                             adv_loss.data.cpu().numpy(), dis_acc, adv_acc])
             csvFile.close()
             gen_optimizer.zero_grad()
             gen_gap_loss.backward()

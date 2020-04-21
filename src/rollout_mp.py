@@ -26,14 +26,16 @@ class Rollout(object):
             num : roll-out number
             discriminator : discrimanator model
         '''
-        dis_rewards = []
-        adv_rewards = []
+        
+        
         batch_size = x_gen.size(0)
         seq_len = x_gen.size(1)
         total_acc = 0.0
         a = np.array([1, 1, 2, 3, 5, 8]) 
         for i in tqdm(range(num)):
-            # MC sampling times
+        def MonteCarlo(model, x_gen, target, category, num, discriminator, adversary, dis_avg_rewards, adv_avg_rewards):
+            dis_rewards = []
+            adv_rewards = []
             for l in range(1, seq_len):
                 data = x_gen[:, 0:l]
                 samples, _ = self.own_model.sample(batch_size, data, target)
@@ -67,10 +69,12 @@ class Rollout(object):
             else:
                 dis_rewards[seq_len-1] += dis_pred
                 adv_rewards[seq_len-1] += adv_pred
-        dis_rewards = torch.stack(dis_rewards, axis=1) / (1.0 * num) # batch_size * seq_len
-        adv_rewards = torch.stack(adv_rewards, axis=1) / (1.0 * num) # batch_size * seq_len
+            dis_rewards = torch.stack(dis_rewards, axis=1) # batch_size * seq_len
+            adv_rewards = torch.stack(adv_rewards, axis=1) # batch_size * seq_len
+            dis_avg_rewards += dis_rewards
+            adv_avg_rewards += adv_rewards
         # print("Total acc:",total_acc / num)
-        return dis_rewards, adv_rewards
+        return dis_avg_rewards / (1.0 * num), adv_avg_rewards / (1.0 * num)
 
     def update_params(self):
         dic = {}
