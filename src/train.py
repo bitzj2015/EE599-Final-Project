@@ -372,7 +372,7 @@ def train_gap(model,
             print("Sampling ... ")
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
-            dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
+            dis_rewards, adv_rewards = rollout.get_reward(data[:,:,0], target, category, MC_NUM, discriminator, adversary)
             dis_rewards = torch.Tensor(dis_rewards).contiguous().view(-1)
             adv_rewards = torch.Tensor(adv_rewards).contiguous().view(-1)
             print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
