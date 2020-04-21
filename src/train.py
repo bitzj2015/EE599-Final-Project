@@ -6,6 +6,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from rollout import Rollout
 from utils import GANLoss
+import numpy as np
 '''
 Define pretrain module for generator
 '''
@@ -353,34 +354,38 @@ def train_gap(model,
     print("[INFO] Start training GAP ...")
     gen_dis_loss = GANLoss()
     gen_adv_loss = GANLoss()
-    W = totch.Tensor(W)
+    W = torch.Tensor(W)
     if USE_CUDA:
         gen_dis_loss = gen_dis_loss.cuda()
         gen_adv_loss = gen_adv_loss.cuda()
         W = W.cuda()
-
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
-        for batch in tqdm(data_loader):
+        step = 0
+        for batch in tqdm(train_loader):
+            step += 1
             data, category = batch['x'], batch['u'].squeeze()
             target = data
             if USE_CUDA:
                 data, category = data.cuda(), category.cuda(), target.cuda()
             batch_size = data.size(0)
+            print("Sampling ... ")
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
-            dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, 16, discriminator, adversary)
-            dis_rewards = torch.Tensor(dis_rewards)
-            dis_rewards = torch.exp(dis_rewards).contiguous().view((-1,))
-            adv_rewards = torch.Tensor(adv_rewards)
-            adv_rewards = torch.exp(adv_rewards).contiguous().view((-1,))
+            dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
+            dis_rewards = torch.Tensor(dis_rewards).contiguous().view(-1)
+            adv_rewards = torch.Tensor(adv_rewards).contiguous().view(-1)
+            print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
+            print(dis_rewards, adv_rewards)
             if USE_CUDA:
                 dis_rewards = dis_rewards.cuda()
                 adv_rewards = adv_rewards.cuda()
-            dis_loss = gen_dis_loss(pred, target, dis_rewards)
-            adv_loss = gen_adv_loss(pred, target, adv_rewards)
-            mle_loss = gen_criterion(pred, target[:, :, 0])
+            dis_loss = gen_dis_loss(pred, target[:,:,0].contiguous().view(-1), dis_rewards)
+            adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
+            mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1))
             gen_gap_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
+            print("[INFO] Epoch: {}, step: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}".\
+                format(epoch, step, mle_loss, dis_loss, adv_loss))
             gen_optimizer.zero_grad()
             gen_gap_loss.backward()
             gen_optimizer.step()

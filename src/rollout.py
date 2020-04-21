@@ -2,7 +2,7 @@ import os
 import random
 import math
 import copy
-import tqdm
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
@@ -29,7 +29,7 @@ class Rollout(object):
         adv_rewards = []
         batch_size = x_gen.size(0)
         seq_len = x_gen.size(1)
-        for i in range(num):
+        for i in tqdm(range(num)):
             # MC sampling times
             for l in range(1, seq_len):
                 data = x_gen[:, 0:l]
@@ -38,7 +38,7 @@ class Rollout(object):
                 dis_pred = discriminator(samples_)
                 dis_pred = dis_pred.cpu().data[:,1].numpy()
                 adv_pred = adversary(samples_)
-                adv_pred = torch.gather(adv_pred, 1, category.view(batch_size,1)).cpu().numpy().view(-1)
+                adv_pred = np.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1).cpu().data.numpy())
                 adv_pred = 1 - adv_pred # batch_size
                 if i == 0:
                     dis_rewards.append(dis_pred)
@@ -48,10 +48,11 @@ class Rollout(object):
                     adv_rewards[l-1] += adv_pred
 
             # for the last token
-            dis_pred = discriminator(x_gen)
+            samples_ = torch.stack([x_gen, target[:,:,1]], axis=2)
+            dis_pred = discriminator(samples_)
             dis_pred = dis_pred.cpu().data[:, 1].numpy()
-            adv_pred = adversary(x_gen)
-            adv_pred = torch.gather(adv_pred, 1, category.view(batch_size,1)).cpu().numpy().view(-1)
+            adv_pred = adversary(samples_)
+            adv_pred = np.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1).cpu().data.numpy())
             adv_pred = 1 - adv_pred
             if i == 0:
                 dis_rewards.append(dis_pred)

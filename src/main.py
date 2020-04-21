@@ -15,7 +15,7 @@ import torch.optim as optim
 # Load self-defined module
 from generator import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
-from train import pretrain_gen, train_adv, train_dis
+from train import pretrain_gen, train_adv, train_dis, train_gap
 from data_loader import LoadData
 from rollout import Rollout
 
@@ -38,7 +38,7 @@ PRE_GEN_EPOCH_NUM = 100
 PRE_ADV_EPOCH_NUM = 25
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
-MC_NUM = 16
+MC_NUM = 2
 GAP_W = [0.2, 0.2, 0.6]
 GEN_LR = 0.01
 ADV_LR = 0.01
@@ -141,6 +141,13 @@ elif args.phase == "pretrain_dis":
               PHASE="pretrain", 
               PLOT=False)
 elif args.phase == "train_gap":
+    # Load pretrained parameters
+    try:
+        generator.load_state_dict(torch.load(GEN_PATH))
+        discriminator.load_state_dict(torch.load(DIS_PATH))
+        adversarial.load_state_dict(torch.load(ADV_PATH))
+    except:
+        print("[Err] No pretrained model!")
     # Define optimizer and loss function for discriminator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
@@ -156,10 +163,10 @@ elif args.phase == "train_gap":
     train_gap(model=[generator, discriminator, adversary],
               criterion=[gen_criterion, dis_criterion, adv_criterion],
               optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
-              train_loader,
-              test_loader,
-              PATH,
-              USE_CUDA,
-              GAP_EPOCH_NUM,
+              train_loader=train_loader,
+              test_loader=test_loader,
+              PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
+              USE_CUDA=USE_CUDA,
+              EPOCH_NUM=GAP_EPOCH_NUM,
               MC_NUM=MC_NUM,
               W=GAP_W)
