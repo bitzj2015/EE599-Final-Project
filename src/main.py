@@ -97,14 +97,14 @@ if args.phase == "pretrain_gen":
     if USE_CUDA:
         gen_criterion = gen_criterion.cuda()
     # Pretrain generator using MLE
-    pretrain_gen(generator, 
-                 train_loader, 
-                 test_loader, 
-                 gen_criterion, 
-                 gen_optimizer, 
-                 PRE_GEN_PATH, 
-                 USE_CUDA, 
-                 PRE_GEN_EPOCH_NUM,
+    pretrain_gen(generator=generator, 
+                 train_loader=train_loader, 
+                 test_loader=test_loader, 
+                 gen_criterion=gen_criterion, 
+                 gen_optimizer=gen_optimizer, 
+                 GEN_PATH=PRE_GEN_PATH, 
+                 USE_CUDA=USE_CUDA, 
+                 EPOCH_NUM=PRE_GEN_EPOCH_NUM,
                  PLOT=True)
 
 elif args.phase == "pretrain_adv":
@@ -114,14 +114,15 @@ elif args.phase == "pretrain_adv":
     if USE_CUDA:
         adv_criterion = adv_criterion.cuda()
     # Pretrain adversary using CNN text classifier
-    train_adv(adversary, 
-              train_loader, 
-              test_loader, 
-              adv_criterion,
-              adv_optimizer, 
-              PRE_ADV_PATH, 
-              USE_CUDA, 
-              PRE_ADV_EPOCH_NUM,
+    train_adv(adversary=adversary, 
+              generator=None,
+              train_loader=train_loader, 
+              test_loader=test_loader, 
+              adv_criterion=adv_criterion,
+              adv_optimizer=adv_optimizer, 
+              ADV_PATH=PRE_ADV_PATH, 
+              USE_CUDA=USE_CUDA, 
+              EPOCH_NUM=PRE_ADV_EPOCH_NUM,
               PHASE="pretrain",
               PLOT=True)
 
@@ -132,15 +133,15 @@ elif args.phase == "pretrain_dis":
     if USE_CUDA:
         dis_criterion = dis_criterion.cuda()
     # Pretrain discriminator using CNN text classifier
-    train_dis(discriminator, 
-              generator,
-              train_loader,
-              test_loader,
-              dis_criterion,
-              dis_optimizer,
-              PRE_DIS_PATH,
-              USE_CUDA, 
-              PRE_DIS_EPOCH_NUM,
+    train_dis(discriminator=discriminator, 
+              generator=generator,
+              train_loader=train_loader,
+              test_loader=test_loader,
+              dis_criterion=dis_criterion,
+              dis_optimizer=dis_optimizer,
+              DIS_PATH=PRE_DIS_PATH,
+              USE_CUDA=USE_CUDA, 
+              EPOCH_NUM=PRE_DIS_EPOCH_NUM,
               PHASE="pretrain", 
               PLOT=False)
 elif args.phase == "train_gap":

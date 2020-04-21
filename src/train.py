@@ -121,7 +121,8 @@ def pretrain_gen(generator,
 '''
 Define pretrain module for adversary
 '''
-def train_adv_epoch(model, 
+def train_adv_epoch(model,
+                    generator,
                     dataloader, 
                     criterion, 
                     optimizer, 
@@ -136,7 +137,12 @@ def train_adv_epoch(model,
         # print(data.size(), target.size(0), target)
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
-        pred = model.forward(data)
+        if generator != None:
+            samples = generator.forward(data)
+            samples = torch.stack([samples, data[:,:,1]], axis=2)
+        else:
+            samples = data
+        pred = model.forward(samples)
         loss = criterion(pred, target)
         total_loss += loss.item()
         total_words += data.size(0) * data.size(1)
@@ -150,6 +156,7 @@ def train_adv_epoch(model,
     return math.exp(total_loss / total_words), total_acc / count
 
 def test_adv_epoch(model, 
+                   generator,
                    dataloader, 
                    criterion, 
                    optimizer, 
@@ -163,8 +170,13 @@ def test_adv_epoch(model,
         data, target = batch['x'], batch['u'].squeeze()
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
+        if generator != None:
+            samples = generator.forward(data)
+            samples = torch.stack([samples, data[:,:,1]], axis=2)
+        else:
+            samples = data
         with torch.no_grad():
-            pred = model.forward(data)
+            pred = model.forward(samples)
             loss = criterion(pred, target)
             total_loss += loss.item()
             total_words += data.size(0) * data.size(1)
@@ -173,7 +185,8 @@ def test_adv_epoch(model,
             count += 1
     return math.exp(total_loss / total_words), total_acc / count
 
-def train_adv(adversary, 
+def train_adv(adversary,
+              generator,
               train_loader, 
               test_loader, 
               adv_criterion, 
@@ -190,13 +203,15 @@ def train_adv(adversary,
     test_acc_list = []
     for epoch in range(EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
-        train_loss, train_acc = train_adv_epoch(adversary, 
+        train_loss, train_acc = train_adv_epoch(adversary,
+                                                generator, 
                                                 train_loader, 
                                                 adv_criterion, 
                                                 adv_optimizer, 
                                                 ADV_PATH, 
                                                 USE_CUDA)
-        test_loss, test_acc = test_adv_epoch(adversary, 
+        test_loss, test_acc = test_adv_epoch(adversary,
+                                             generator, 
                                              test_loader, 
                                              adv_criterion, 
                                              adv_optimizer, 
@@ -382,8 +397,8 @@ def train_gap(model,
             adv_acc = 1 - np.mean(adv_rewards[:, -1].data.cpu().numpy())
             dis_rewards = dis_rewards.contiguous().view(-1)
             adv_rewards = adv_rewards.contiguous().view(-1)
-            print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
-            print(dis_rewards, adv_rewards)
+            # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
+            # print(dis_rewards, adv_rewards)
             if USE_CUDA:
                 dis_rewards = dis_rewards.cuda()
                 adv_rewards = adv_rewards.cuda()
@@ -405,24 +420,25 @@ def train_gap(model,
         torch.save(generator.state_dict(), GEN_PATH)
 
         if epoch % 5 == 0:
-            train_dis(discriminator, 
-                      generator,
-                      train_loader,
-                      test_loader,
-                      dis_criterion,
-                      dis_optimizer,
-                      DIS_PATH,
-                      USE_CUDA, 
+            train_dis(discriminator=discriminator, 
+                      generator=generator,
+                      train_loader=train_loader,
+                      test_loader=test_loader,
+                      dis_criterion=dis_criterion,
+                      dis_optimizer=dis_optimizer,
+                      DIS_PATH=DIS_PATH,
+                      USE_CUDA=USE_CUDA, 
                       EPOCH_NUM=5,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=False)
-            train_adv(adversary, 
-                      train_loader, 
-                      test_loader, 
-                      adv_criterion,
-                      adv_optimizer, 
-                      ADV_PATH, 
-                      USE_CUDA, 
+            train_adv(adversary=adversary, 
+                      generator=generator,
+                      train_loader=train_loader, 
+                      test_loader=test_loader, 
+                      adv_criterion=adv_criterion,
+                      adv_optimizer=adv_optimizer, 
+                      ADV_PATH=ADV_PATH, 
+                      USE_CUDA=USE_CUDA, 
                       EPOCH_NUM=5,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=True)
