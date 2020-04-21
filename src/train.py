@@ -1,4 +1,5 @@
 import os
+import csv
 import json
 import math
 import torch
@@ -359,6 +360,10 @@ def train_gap(model,
         gen_dis_loss = gen_dis_loss.cuda()
         gen_adv_loss = gen_adv_loss.cuda()
         W = W.cuda()
+    csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+    writer = csv.writer(csvFile)
+    writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "dis_acc", "adv_acc"])
+    csvFile.close()
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
         step = 0
@@ -372,7 +377,9 @@ def train_gap(model,
             print("Sampling ... ")
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
-            dis_rewards, adv_rewards = rollout.get_reward(data[:,:,0], target, category, MC_NUM, discriminator, adversary)
+            dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
+            dis_acc = np.mean(dis_rewards[:, -1])
+            adv_acc = 1 - np.mean(adv_rewards[:, -1])
             dis_rewards = torch.Tensor(dis_rewards).contiguous().view(-1)
             adv_rewards = torch.Tensor(adv_rewards).contiguous().view(-1)
             print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
@@ -384,12 +391,17 @@ def train_gap(model,
             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
             mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
             gen_gap_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
-            print("[INFO] Epoch: {}, step: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}".\
-                format(epoch, step, mle_loss, dis_loss, adv_loss))
+            print("[INFO] Epoch: {}, step: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, dis_acc: {}, adv_acc: {}".\
+                format(epoch, step, mle_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
+            csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+            writer = csv.writer(csvFile)
+            writer.writerow([epoch, step, mle_loss, dis_loss, adv_loss, dis_acc, adv_acc])
+            csvFile.close()
             gen_optimizer.zero_grad()
             gen_gap_loss.backward()
             gen_optimizer.step()
             rollout.update_params()
+        torch.save(generator.state_dict(), GEN_PATH)
 
         if epoch % 5 == 0:
             train_dis(discriminator, 

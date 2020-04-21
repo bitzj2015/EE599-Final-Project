@@ -35,7 +35,7 @@ np.random.seed(SEED)
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 100
-PRE_ADV_EPOCH_NUM = 25
+PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
 MC_NUM = 2
@@ -43,6 +43,9 @@ GAP_W = [0.2, 0.2, 0.6]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
+PRE_GEN_PATH = "../param/pre_generator.pkl"
+PRE_ADV_PATH = "../param/pre_adversary.pkl"
+PRE_DIS_PATH = "../param/pre_discriminator.pkl"
 GEN_PATH = "../param/generator.pkl"
 ADV_PATH = "../param/adversary.pkl"
 DIS_PATH = "../param/discriminator.pkl"
@@ -99,7 +102,7 @@ if args.phase == "pretrain_gen":
                  test_loader, 
                  gen_criterion, 
                  gen_optimizer, 
-                 GEN_PATH, 
+                 PRE_GEN_PATH, 
                  USE_CUDA, 
                  PRE_GEN_EPOCH_NUM,
                  PLOT=True)
@@ -116,7 +119,7 @@ elif args.phase == "pretrain_adv":
               test_loader, 
               adv_criterion,
               adv_optimizer, 
-              ADV_PATH, 
+              PRE_ADV_PATH, 
               USE_CUDA, 
               PRE_ADV_EPOCH_NUM,
               PHASE="pretrain",
@@ -135,7 +138,7 @@ elif args.phase == "pretrain_dis":
               test_loader,
               dis_criterion,
               dis_optimizer,
-              DIS_PATH,
+              PRE_DIS_PATH,
               USE_CUDA, 
               PRE_DIS_EPOCH_NUM,
               PHASE="pretrain", 
@@ -143,9 +146,9 @@ elif args.phase == "pretrain_dis":
 elif args.phase == "train_gap":
     # Load pretrained parameters
     try:
-        generator.load_state_dict(torch.load(GEN_PATH))
-        discriminator.load_state_dict(torch.load(DIS_PATH))
-        adversarial.load_state_dict(torch.load(ADV_PATH))
+        # generator.load_state_dict(torch.load(PRE_GEN_PATH))
+        discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
+        adversary.load_state_dict(torch.load(PRE_ADV_PATH))
     except:
         print("[Err] No pretrained model!")
     # Define optimizer and loss function for discriminator

@@ -54,7 +54,7 @@ class Rollout(object):
             dis_pred = torch.exp(dis_pred).cpu().data[:,1].numpy()
             adv_pred = adversary(samples_)
             _, pred_ = torch.max(adv_pred, axis=-1)
-            total_acc += (pred_ == category.view(batch_size,1)).sum().item() / batch_size
+            total_acc += (pred_ == category).sum().item() / batch_size
             # print("check1:", torch.exp(adv_pred)[0:10])
             adv_pred = np.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1).cpu().data.numpy())
             # print("check2:", category.view(batch_size,1)[0:10])
@@ -67,7 +67,7 @@ class Rollout(object):
                 adv_rewards[seq_len-1] += adv_pred
         dis_rewards = np.transpose(np.array(dis_rewards)) / (1.0 * num) # batch_size * seq_len
         adv_rewards = np.transpose(np.array(adv_rewards)) / (1.0 * num) # batch_size * seq_len
-        print("acc:",total_acc / num)
+        print("Total acc:",total_acc / num)
         return dis_rewards, adv_rewards
 
     def update_params(self):
