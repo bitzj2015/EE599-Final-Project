@@ -367,7 +367,7 @@ def train_gap(model,
             data, category = batch['x'], batch['u'].squeeze()
             target = data
             if USE_CUDA:
-                data, category = data.cuda(), category.cuda(), target.cuda()
+                data, category, target = data.cuda(), category.cuda(), target.cuda()
             batch_size = data.size(0)
             print("Sampling ... ")
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
@@ -382,7 +382,7 @@ def train_gap(model,
                 adv_rewards = adv_rewards.cuda()
             dis_loss = gen_dis_loss(pred, target[:,:,0].contiguous().view(-1), dis_rewards)
             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
-            mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1))
+            mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
             gen_gap_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
             print("[INFO] Epoch: {}, step: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}".\
                 format(epoch, step, mle_loss, dis_loss, adv_loss))

@@ -36,7 +36,7 @@ class Rollout(object):
                 samples, _ = self.own_model.sample(batch_size, data, target)
                 samples_ = torch.stack([samples, target[:,:,1]], axis=2)
                 dis_pred = discriminator(samples_)
-                dis_pred = dis_pred.cpu().data[:,1].numpy()
+                dis_pred = torch.exp(dis_pred).cpu().data[:,1].numpy()
                 adv_pred = adversary(samples_)
                 adv_pred = np.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1).cpu().data.numpy())
                 adv_pred = 1 - adv_pred # batch_size
@@ -50,7 +50,7 @@ class Rollout(object):
             # for the last token
             samples_ = torch.stack([x_gen, target[:,:,1]], axis=2)
             dis_pred = discriminator(samples_)
-            dis_pred = dis_pred.cpu().data[:, 1].numpy()
+            dis_pred = torch.exp(dis_pred).cpu().data[:,1].numpy()
             adv_pred = adversary(samples_)
             adv_pred = np.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1).cpu().data.numpy())
             adv_pred = 1 - adv_pred

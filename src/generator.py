@@ -38,7 +38,7 @@ class Generator(nn.Module):
         emb = self.emb(x) * mask.unsqueeze(2)
         h0, c0 = self.init_hidden(x.size(0))
         output, (h, c) = self.lstm(emb, (h0, c0))
-        pred = F.softmax(self.fc(output.contiguous().view(-1, self.args.hidden_dim)), dim=1)
+        pred = F.log_softmax(self.fc(output.contiguous().view(-1, self.args.hidden_dim)), dim=1)
         return pred
 
     def step(self, input, h, c):
@@ -52,7 +52,7 @@ class Generator(nn.Module):
         mask = input[:, 0, 1].float()
         emb = self.emb(x) * mask.unsqueeze(2)
         output, (h, c) = self.lstm(emb, (h, c))
-        pred = F.softmax(self.fc(output.view(-1, self.args.hidden_dim)), dim=1)
+        pred = F.log_softmax(self.fc(output.view(-1, self.args.hidden_dim)), dim=1)
         return pred, h, c
 
     def init_hidden(self, batch_size):
@@ -72,10 +72,10 @@ class Generator(nn.Module):
             target = target.cuda()
         if flag:
             output = self.forward(target)
-            samples = output.multinomial(1).view(batch_size, -1)
+            samples = torch.exp(output).multinomial(1).view(batch_size, -1)
         else:
             given_len = x_gen.size(1)
             output = self.forward(target[:, given_len:,: ])
-            samples = [x_gen, output.multinomial(1).view(batch_size, -1)]
+            samples = [x_gen, torch.exp(output).multinomial(1).view(batch_size, -1)]
             samples = torch.cat(samples, dim=1)
         return samples, output

@@ -81,10 +81,10 @@ class GANLoss(nn.Module):
         if prob.is_cuda:
             one_hot = one_hot.cuda()
         one_hot.scatter_(1, target.data.view((-1,1)), 1)
-        one_hot = one_hot.type(torch.ByteTensor)
+        one_hot = one_hot.type(torch.BoolTensor)
         if prob.is_cuda:
             one_hot = one_hot.cuda()
         loss = torch.masked_select(prob, one_hot)
         loss = loss * reward
-        loss =  -torch.sum(loss)
+        loss =  -torch.sum(loss) / loss.size(0)
         return loss
