@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from multiprocessing import shared_memory
 
 class Rollout(object):
     '''
@@ -31,7 +30,6 @@ class Rollout(object):
         batch_size = x_gen.size(0)
         seq_len = x_gen.size(1)
         total_acc = 0.0
-        a = np.array([1, 1, 2, 3, 5, 8]) 
         for i in tqdm(range(num)):
             # MC sampling times
             for l in range(1, seq_len):

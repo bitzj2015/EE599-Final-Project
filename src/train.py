@@ -138,8 +138,10 @@ def train_adv_epoch(model,
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         if generator != None:
-            samples = generator.forward(data)
-            samples = torch.stack([samples, data[:,:,1]], axis=2)
+            pred = generator.forward(data)
+            _, pred_ = torch.max(pred, axis=-1)
+            pred_ = pred_.view(data.size(0), -1)
+            samples = torch.stack([pred_, data[:,:,1]], axis=2)
         else:
             samples = data
         pred = model.forward(samples)
@@ -171,8 +173,10 @@ def test_adv_epoch(model,
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         if generator != None:
-            samples = generator.forward(data)
-            samples = torch.stack([samples, data[:,:,1]], axis=2)
+            pred = generator.forward(data)
+            _, pred_ = torch.max(pred, axis=-1)
+            pred_ = pred_.view(data.size(0), -1)
+            samples = torch.stack([pred_, data[:,:,1]], axis=2)
         else:
             samples = data
         with torch.no_grad():
