@@ -402,7 +402,7 @@ def train_gap(model,
             dis_rewards = dis_rewards.contiguous().view(-1)
             adv_rewards = adv_rewards.contiguous().view(-1)
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
-            # print(dis_rewards, adv_rewards)
+            print(dis_rewards, adv_rewards)
             if USE_CUDA:
                 dis_rewards = dis_rewards.cuda()
                 adv_rewards = adv_rewards.cuda()
@@ -410,8 +410,8 @@ def train_gap(model,
             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
             mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
             gen_gap_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
-            print("[INFO] Epoch: {}, step: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, dis_acc: {}, adv_acc: {}".\
-                format(epoch, step, mle_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
+            print("[INFO] Epoch: {}, step: {}, loss: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, dis_acc: {}, adv_acc: {}".\
+                format(epoch, step, gen_gap_loss.data, mle_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
             csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
             writer = csv.writer(csvFile)
             writer.writerow([epoch, step, mle_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
