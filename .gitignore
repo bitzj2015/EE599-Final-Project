@@ -1,5 +1,7 @@
 *.json
+*.DS_Store
 *.csv
 local
 .data
 .ipynb_checkpoints
+.DS_Store
