@@ -39,16 +39,16 @@ PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
 MC_NUM = 16
-GAP_W = [0.01, 0.09, 0.9]
+GAP_W = [0.0, 0.5, 0.5]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
 PRE_GEN_PATH = "../param/pre_generator.pkl"
 PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
-GEN_PATH = "../param/generator_v2.pkl"
-ADV_PATH = "../param/adversary_v2.pkl"
-DIS_PATH = "../param/discriminator_v2.pkl"
+GEN_PATH = "../param/generator_v3.pkl"
+ADV_PATH = "../param/adversary_v3.pkl"
+DIS_PATH = "../param/discriminator_v3.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
