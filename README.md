@@ -13,8 +13,11 @@ Jiang Zhang, Zhongxuan Ruan, Mengwei Yang
 
 ## Required Environment:
 * Pytorch 1.4, Python 3.6+, Ray ...\
-* Installation:
-`pip install ray`
+* Installation command:\
+Pytorch: `pip install torch torchvision`\
+Ray: `pip install ray`\
+Other: `pip install numpy matplotlib tqdm`
+
 
 ## Notes:
 * Please run `git pull` and fix your local conflicts, before you upload your commits using `git push`.
