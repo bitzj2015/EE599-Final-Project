@@ -12,8 +12,9 @@ Jiang Zhang, Zhongxuan Ruan, Mengwei Yang
 * All team members will work on the final presentation, slides, and report.  And they will contribute equally to this project.
 
 ## Required Environment:
-Pytorch 1.4, Python 3.6+, Ray ...\
-command
+* Pytorch 1.4, Python 3.6+, Ray ...\
+* Installation:
+`pip install ray`
 
 ## Notes:
 * Please run `git pull` and fix your local conflicts, before you upload your commits using `git push`.
