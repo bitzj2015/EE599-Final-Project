@@ -15,6 +15,7 @@ def pretrain_gen_epoch(model,
                        dataloader, 
                        criterion, 
                        optimizer, 
+                       index_map,
                        model_path, 
                        USE_CUDA=False):
     total_loss = 0.
@@ -49,6 +50,7 @@ def pretest_gen_epoch(model,
                       dataloader, 
                       criterion, 
                       optimizer, 
+                      index_map,
                       model_path, 
                       USE_CUDA=False):
     total_loss = 0.
@@ -81,25 +83,28 @@ def pretrain_gen(generator,
                  test_loader, 
                  gen_criterion, 
                  gen_optimizer, 
+                 index_map,
                  GEN_PATH, 
                  USE_CUDA, 
-                 PRE_EPOCH_NUM,
+                 EPOCH_NUM,
                  PLOT=True):
     print('[INFO] Pretrain generator with MLE ...')
     train_loss_list = []
     test_loss_list = []
-    for epoch in range(PRE_EPOCH_NUM):
+    for epoch in range(EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
         train_loss = pretrain_gen_epoch(generator, 
                                         train_loader, 
                                         gen_criterion, 
                                         gen_optimizer, 
-                                        GEN_PATH, 
+                                        index_map,
+                                        GEN_PATH,
                                         USE_CUDA)
         test_loss = pretest_gen_epoch(generator, 
                                       test_loader, 
                                       gen_criterion, 
-                                      gen_optimizer, 
+                                      gen_optimizer,
+                                      index_map, 
                                       GEN_PATH, 
                                       USE_CUDA)
         print('[INFO] End epoch [%d], \
@@ -261,9 +266,7 @@ def train_dis(discriminator,
               PHASE="pretrain", 
               PLOT=False):
     train_loss_list = []
-    test_loss_list = []
     train_acc_list = []
-    test_acc_list = []
 
     for epoch in range(EPOCH_NUM):
         print('[INFO] Start training epoch [%d] ...'% (epoch))   
@@ -308,6 +311,22 @@ def train_dis(discriminator,
         print('[INFO] End training epoch [%d], \
                       loss: %.4f, accuracy: %.4f'% \
                       (epoch, total_loss, total_acc))
+    test_loss, test_acc = test_dis(discriminator, 
+                                   generator,
+                                   test_loader,
+                                   dis_criterion,
+                                   dis_optimizer,
+                                   DIS_PATH,
+                                   USE_CUDA)
+    return train_loss_list, train_acc_list, test_loss, test_acc
+
+def test_dis(discriminator, 
+             generator,
+             test_loader,
+             dis_criterion,
+             dis_optimizer,
+             DIS_PATH,
+             USE_CUDA):
 
     print('[INFO] Start testing ...')   
     test_loss = 0.0
@@ -348,7 +367,7 @@ def train_dis(discriminator,
     print('[INFO] Testing, \
                     loss: %.4f, accuracy: %.4f'% \
                     (test_loss, test_acc))
-    return train_loss_list, train_acc_list, test_loss, test_acc
+    return test_loss, test_acc
 
 '''
 Define training gap
@@ -385,6 +404,26 @@ def train_gap(model,
     csvFile.close()
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
+        dis_reward_bias = 0
+        adv_reward_bias = 0
+        step = 0
+        for batch in tqdm(test_loader): 
+            step += 1  
+            data, category = batch['x'], batch['u'].squeeze()
+            batch_size = data.size(0)
+            target = data
+            samples, pred = generator.sample(batch_size, x_gen=None, target=target)
+            samples_ = torch.stack([samples, target[:,:,1]], axis=2)
+            dis_pred = discriminator(samples_).detach()
+            dis_pred = torch.exp(dis_pred)[:,1]
+            dis_reward_bias += dis_pred.data.cpu().numpy().sum() / batch_size
+            adv_pred = adversary(samples_).detach()
+            adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
+            adv_pred = 1 - adv_pred    
+            adv_reward_bias += adv_pred.data.cpu().numpy().sum() / batch_size
+        dis_reward_bias /= step
+        adv_reward_bias /= step
+        print("[INFO] Epoch: {}, Bias: ({}, {})".format(epoch, dis_reward_bias, adv_reward_bias)) 
         step = 0
         for batch in tqdm(train_loader):
             step += 1
@@ -399,8 +438,8 @@ def train_gap(model,
             dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
             dis_acc = np.mean(dis_rewards[:, -1].data.cpu().numpy())
             adv_acc = 1 - np.mean(adv_rewards[:, -1].data.cpu().numpy())
-            dis_rewards = dis_rewards.contiguous().view(-1)
-            adv_rewards = adv_rewards.contiguous().view(-1)
+            dis_rewards = dis_rewards.contiguous().view(-1) - dis_reward_bias
+            adv_rewards = adv_rewards.contiguous().view(-1) - adv_reward_bias
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
             print(dis_rewards, adv_rewards)
             if USE_CUDA:

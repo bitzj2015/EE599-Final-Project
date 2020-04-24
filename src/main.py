@@ -39,7 +39,7 @@ PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
 MC_NUM = 16
-GAP_W = [0.0, 0.5, 0.5]
+GAP_W = [0.2, 0.2, 0.6]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -52,10 +52,11 @@ DIS_PATH = "../param/discriminator_v3.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
-    MAX_SEQ_LEN, VOCAB_SIZE = LoadData(data_path="../data/dataset_batch.json", 
-                                       word2id_path="../data/word_map.json", 
-                                       train_split=0.8,
-                                       BATCH_SIZE=64)
+    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch.json", 
+                                                  word2id_path="../data/word_map.json", 
+                                                  train_split=0.8,
+                                                  BATCH_SIZE=64)
+
 
 # Genrator Parameters
 gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
@@ -101,7 +102,8 @@ if args.phase == "pretrain_gen":
                  train_loader=train_loader, 
                  test_loader=test_loader, 
                  gen_criterion=gen_criterion, 
-                 gen_optimizer=gen_optimizer, 
+                 gen_optimizer=gen_optimizer,
+                 index_map=index_map, 
                  GEN_PATH=PRE_GEN_PATH, 
                  USE_CUDA=USE_CUDA, 
                  EPOCH_NUM=PRE_GEN_EPOCH_NUM,
