@@ -67,7 +67,7 @@ class Rollout(object):
             adv_rewards = torch.stack(adv_rewards, axis=1) # batch_size * seq_len
             return dis_rewards, adv_rewards
 
-        result = [MonteCarlo.remote(i, batch_size, self.own_model, x_gen, target, category, discriminator, adversary) for i in range(3)]
+        result = [MonteCarlo.remote(i, batch_size, self.own_model, x_gen, target, category, discriminator, adversary) for i in range(num)]
         reward = ray.get(result)
         dis_avg_rewards = [item[0] for item in reward]
         adv_avg_rewards = [item[1] for item in reward]
