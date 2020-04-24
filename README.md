@@ -33,4 +33,4 @@ Other: `pip install numpy matplotlib tqdm`
 * [SeqGAN Pytorch Implementation.](https://github.com/ZiJianZhao/SeqGAN-PyTorch)
 * [Privacy- and Utility-Preserving Textual Analysis via CalibratedMultivariate Perturbations.](https://dl.acm.org/doi/pdf/10.1145/3336191.3371856)
 * [Auditing Data Provenance in Text-Generation Models.](https://arxiv.org/pdf/1811.00513.pdf)
-* [Ray for multiprocessing](https://ray.readthedocs.io/en/latest/using-ray-with-pytorch.html)
+* [Ray for multiprocessing.](https://ray.readthedocs.io/en/latest/using-ray-with-pytorch.html)
