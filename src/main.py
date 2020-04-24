@@ -17,7 +17,6 @@ from generator import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
 from train import pretrain_gen, train_adv, train_dis, train_gap
 from data_loader import LoadData
-from rollout import Rollout
 
 # Set argument parser
 parser = argparse.ArgumentParser(description='Training Parameter')
