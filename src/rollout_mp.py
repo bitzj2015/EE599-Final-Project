@@ -7,7 +7,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.multiprocessing as mp
+from torch.multiprocessing import Pool, Process, Queue
+import ray
+ray.init()
+
 
 class Rollout(object):
     '''
@@ -26,39 +29,27 @@ class Rollout(object):
             num : roll-out number
             discriminator : discrimanator model
         '''
-        
-        
         batch_size = x_gen.size(0)
         seq_len = x_gen.size(1)
-        
-        dis_reward_q = mp.Queue()
-        adv_reward_q = mp.Queue()
-        self.own_model.share_memory()
-        discriminator.share_memory()
-        adversary.share_memory()
-        def MonteCarlo(i, model, x_gen, target, category, discriminator, adversary, dis_reward_q, adv_reward_q):
+
+        @ray.remote
+        def MonteCarlo(i, batch_size, model, x_gen, target, category, discriminator, adversary):
             print("[INFO] Process: {}".format(i))
             print(model)
             total_acc = 0.0
             dis_rewards = []
             adv_rewards = []
             for l in tqdm(range(1, seq_len)):
-                print(l)
                 data = x_gen[:, 0:l]
                 samples, _ = model.sample(batch_size, data, target)
-                print(samples)
                 samples_ = torch.stack([samples, target[:,:,1]], axis=2)
                 dis_pred = discriminator(samples_).detach()
                 dis_pred = torch.exp(dis_pred)[:,1]
                 adv_pred = adversary(samples_).detach()
                 adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
                 adv_pred = 1 - adv_pred # batch_size
-                if i == 0:
-                    dis_rewards.append(dis_pred)
-                    adv_rewards.append(adv_pred)
-                else:
-                    dis_rewards[l-1] += dis_pred
-                    adv_rewards[l-1] += adv_pred
+                dis_rewards.append(dis_pred)
+                adv_rewards.append(adv_pred)
 
             # for the last token
             samples_ = torch.stack([x_gen, target[:,:,1]], axis=2)
@@ -67,40 +58,19 @@ class Rollout(object):
             adv_pred = adversary(samples_).detach()
             _, pred_ = torch.max(adv_pred, axis=-1)
             total_acc += (pred_ == category).sum().item() / batch_size
-            # print("check1:", torch.exp(adv_pred)[0:10])
             adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
-            # print("check2:", category.view(batch_size,1)[0:10])
             adv_pred = 1 - adv_pred
-            if i == 0:
-                dis_rewards.append(dis_pred)
-                adv_rewards.append(adv_pred)
-            else:
-                dis_rewards[seq_len-1] += dis_pred
-                adv_rewards[seq_len-1] += adv_pred
+
+            dis_rewards.append(dis_pred)
+            adv_rewards.append(adv_pred)
             dis_rewards = torch.stack(dis_rewards, axis=1) # batch_size * seq_len
             adv_rewards = torch.stack(adv_rewards, axis=1) # batch_size * seq_len
-            dis_reward_q.put(dis_rewards)
-            adv_reward_q.put(adv_rewards)
-        # print("Total acc:",total_acc / num)
-        jobs = []
-        for i in range(num):
-            p = mp.Process(target=MonteCarlo, 
-                                        args=(i,
-                                              self.own_model, 
-                                              x_gen, 
-                                              target, 
-                                              category, 
-                                              discriminator, 
-                                              adversary, 
-                                              dis_reward_q, 
-                                              adv_reward_q))
-            jobs.append(p)
-            p.start()
+            return dis_rewards, adv_rewards
 
-        for p in jobs:
-            p.join()
-        dis_avg_rewards = [dis_reward_q.get() for j in jobs]
-        adv_avg_rewards = [adv_reward_q.get() for j in jobs]
+        result = [MonteCarlo.remote(i, batch_size, self.own_model, x_gen, target, category, discriminator, adversary) for i in range(3)]
+        reward = ray.get(result)
+        dis_avg_rewards = [item[0] for item in reward]
+        adv_avg_rewards = [item[1] for item in reward]
         return sum(dis_avg_rewards) / (1.0 * num), sum(adv_avg_rewards) / (1.0 * num)
 
     def update_params(self):
