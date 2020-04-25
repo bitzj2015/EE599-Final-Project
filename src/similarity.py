@@ -1,3 +1,6 @@
+'''
+https://github.com/rohanpillai20/Sentence-Similarity-based-on-Semantic-Nets-and-Corpus-Statistics
+'''
 from nltk.corpus import wordnet as wn
 from nltk.corpus import brown
 import math
