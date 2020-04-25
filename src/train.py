@@ -377,6 +377,7 @@ def train_gap(model,
               optimizer,
               train_loader,
               test_loader,
+              index_map,
               PATH,
               USE_CUDA,
               EPOCH_NUM,
@@ -388,13 +389,15 @@ def train_gap(model,
     GEN_PATH, DIS_PATH, ADV_PATH = PATH
 
     # Adversarial Training
-    rollout = Rollout(generator, 0.8)
+    rollout = Rollout(generator, 0.8, index_map)
 
     print("[INFO] Start training GAP ...")
+    gen_sim_loss = GANLoss()
     gen_dis_loss = GANLoss()
     gen_adv_loss = GANLoss()
     W = torch.Tensor(W)
     if USE_CUDA:
+        gen_sim_loss = gen_sim_loss.cuda()
         gen_dis_loss = gen_dis_loss.cuda()
         gen_adv_loss = gen_adv_loss.cuda()
         W = W.cuda()
@@ -435,25 +438,28 @@ def train_gap(model,
             print("Sampling ... ")
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
-            dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
+            sim_rewards, dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
             dis_acc = np.mean(dis_rewards[:, -1].data.cpu().numpy())
             adv_acc = 1 - np.mean(adv_rewards[:, -1].data.cpu().numpy())
+            sim_rewards = sim_rewards.contiguous().view(-1)
             dis_rewards = dis_rewards.contiguous().view(-1) - dis_reward_bias
             adv_rewards = adv_rewards.contiguous().view(-1) - adv_reward_bias
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
             print(dis_rewards, adv_rewards)
             if USE_CUDA:
+                sim_rewards = sim_rewards.cuda()
                 dis_rewards = dis_rewards.cuda()
                 adv_rewards = adv_rewards.cuda()
+            sim_loss = gen_sim_loss(pred, target[:,:,0].contiguous().view(-1), sim_rewards)
             dis_loss = gen_dis_loss(pred, target[:,:,0].contiguous().view(-1), dis_rewards)
             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
-            mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
-            gen_gap_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
-            print("[INFO] Epoch: {}, step: {}, loss: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, dis_acc: {}, adv_acc: {}".\
-                format(epoch, step, gen_gap_loss.data, mle_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
+            # mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
+            gen_gap_loss = W[0] * sim_loss + W[1] * dis_loss + W[2] * adv_loss
+            print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, dis_acc: {}, adv_acc: {}".\
+                format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
             csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
             writer = csv.writer(csvFile)
-            writer.writerow([epoch, step, mle_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
+            writer.writerow([epoch, step, sim_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
                              adv_loss.data.cpu().numpy(), dis_acc, adv_acc])
             csvFile.close()
             gen_optimizer.zero_grad()

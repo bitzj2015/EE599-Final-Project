@@ -33,7 +33,7 @@ np.random.seed(SEED)
 # Basic Training Paramters
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
-PRE_GEN_EPOCH_NUM = 100
+PRE_GEN_EPOCH_NUM = 25
 PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
@@ -170,6 +170,7 @@ elif args.phase == "train_gap":
               optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
               train_loader=train_loader,
               test_loader=test_loader,
+              index_map=index_map,
               PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
               USE_CUDA=USE_CUDA,
               EPOCH_NUM=GAP_EPOCH_NUM,

@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.multiprocessing import Pool, Process, Queue
+from similarity import batch_similarity
 import ray
 ray.init()
 
@@ -16,10 +17,11 @@ class Rollout(object):
     '''
     Roll-out policy
     '''
-    def __init__(self, model, update_rate):
+    def __init__(self, model, update_rate, index_map):
         self.ori_model = model
         self.own_model = copy.deepcopy(model)
         self.update_rate = update_rate
+        self.index_map = index_map
 
     def get_reward(self, x_gen, target, category, num, discriminator, adversary):
         '''
@@ -33,9 +35,10 @@ class Rollout(object):
         seq_len = x_gen.size(1)
 
         @ray.remote
-        def MonteCarlo(i, batch_size, model, x_gen, target, category, discriminator, adversary):
+        def MonteCarlo(i, batch_size, model, x_gen, target, category, discriminator, adversary, index_map):
             print("[INFO] Process: {}".format(i))
             total_acc = 0.0
+            sim_rewards = []
             dis_rewards = []
             adv_rewards = []
             for l in range(1, seq_len):
@@ -47,6 +50,9 @@ class Rollout(object):
                 adv_pred = adversary(samples_).detach()
                 adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
                 adv_pred = 1 - adv_pred # batch_size
+                sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), index_map)
+                sim_reward = torch.Tensor(sim_reward)
+                sim_rewards.append(sim_reward)
                 dis_rewards.append(dis_pred)
                 adv_rewards.append(adv_pred)
 
@@ -59,14 +65,19 @@ class Rollout(object):
             total_acc += (pred_ == category).sum().item() / batch_size
             adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
             adv_pred = 1 - adv_pred
+            sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), index_map)
+            sim_reward = torch.Tensor(sim_reward)
 
+            sim_rewards.append(sim_reward)
             dis_rewards.append(dis_pred)
             adv_rewards.append(adv_pred)
+            sim_rewards = torch.stack(sim_rewards, axis=1) # batch_size * seq_len
             dis_rewards = torch.stack(dis_rewards, axis=1) # batch_size * seq_len
             adv_rewards = torch.stack(adv_rewards, axis=1) # batch_size * seq_len
-            return dis_rewards, adv_rewards
+            return sim_rewards, dis_rewards, adv_rewards
 
-        result = [MonteCarlo.remote(i, batch_size, self.own_model, x_gen, target, category, discriminator, adversary) for i in range(num)]
+        result = [MonteCarlo.remote(i, batch_size, self.own_model, \
+            x_gen, target, category, discriminator, adversary, self.index_map) for i in range(num)]
         reward = ray.get(result)
         dis_avg_rewards = [item[0] for item in reward]
         adv_avg_rewards = [item[1] for item in reward]

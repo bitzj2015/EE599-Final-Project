@@ -7,15 +7,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from similarity import batch_similarity
 
 class Rollout(object):
     '''
     Roll-out policy
     '''
-    def __init__(self, model, update_rate):
+    def __init__(self, model, update_rate, index_map):
         self.ori_model = model
         self.own_model = copy.deepcopy(model)
         self.update_rate = update_rate
+        self.index_map = index_map
 
     def get_reward(self, x_gen, target, category, num, discriminator, adversary):
         '''
@@ -25,6 +27,7 @@ class Rollout(object):
             num : roll-out number
             discriminator : discrimanator model
         '''
+        sim_rewards = []
         dis_rewards = []
         adv_rewards = []
         batch_size = x_gen.size(0)
@@ -41,10 +44,14 @@ class Rollout(object):
                 adv_pred = adversary(samples_).detach()
                 adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
                 adv_pred = 1 - adv_pred # batch_size
+                sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), self.index_map)
+                sim_reward = torch.Tensor(sim_reward)
                 if i == 0:
+                    sim_rewards.append(sim_reward)
                     dis_rewards.append(dis_pred)
                     adv_rewards.append(adv_pred)
                 else:
+                    sim_rewards[l-1] += sim_reward
                     dis_rewards[l-1] += dis_pred
                     adv_rewards[l-1] += adv_pred
 
@@ -55,20 +62,23 @@ class Rollout(object):
             adv_pred = adversary(samples_).detach()
             _, pred_ = torch.max(adv_pred, axis=-1)
             total_acc += (pred_ == category).sum().item() / batch_size
-            # print("check1:", torch.exp(adv_pred)[0:10])
             adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
-            # print("check2:", category.view(batch_size,1)[0:10])
+            sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), self.index_map)
+            sim_reward = torch.Tensor(sim_reward)
             adv_pred = 1 - adv_pred
             if i == 0:
+                sim_rewards.append(sim_reward)
                 dis_rewards.append(dis_pred)
                 adv_rewards.append(adv_pred)
             else:
+                sim_rewards[l-1] += sim_reward
                 dis_rewards[seq_len-1] += dis_pred
                 adv_rewards[seq_len-1] += adv_pred
+        sim_rewards = torch.stack(sim_rewards, axis=1) / (1.0 * num) # batch_size * seq_len
         dis_rewards = torch.stack(dis_rewards, axis=1) / (1.0 * num) # batch_size * seq_len
         adv_rewards = torch.stack(adv_rewards, axis=1) / (1.0 * num) # batch_size * seq_len
         # print("Total acc:",total_acc / num)
-        return dis_rewards, adv_rewards
+        return sim_rewards, dis_rewards, adv_rewards
 
     def update_params(self):
         dic = {}
