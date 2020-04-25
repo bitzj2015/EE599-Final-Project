@@ -403,7 +403,7 @@ def train_gap(model,
         W = W.cuda()
     csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
     writer = csv.writer(csvFile)
-    writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "dis_acc", "adv_acc"])
+    writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "sim_reward", "dis_reward", "adv_reward"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
@@ -439,13 +439,13 @@ def train_gap(model,
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
             sim_rewards, dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
-            dis_acc = np.mean(dis_rewards[:, -1].data.cpu().numpy())
-            adv_acc = 1 - np.mean(adv_rewards[:, -1].data.cpu().numpy())
+            dis_R = np.mean(dis_rewards[:, -1].data.cpu().numpy())
+            adv_R = np.mean(adv_rewards[:, -1].data.cpu().numpy())
+            sim_R = np.mean(sim_rewards[:, -1].data.cpu().numpy())
             sim_rewards = sim_rewards.contiguous().view(-1)
             dis_rewards = dis_rewards.contiguous().view(-1)# - dis_reward_bias
             adv_rewards = adv_rewards.contiguous().view(-1)# - adv_reward_bias
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
-            print(dis_rewards, adv_rewards)
             if USE_CUDA:
                 sim_rewards = sim_rewards.cuda()
                 dis_rewards = dis_rewards.cuda()
@@ -455,12 +455,12 @@ def train_gap(model,
             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
             # mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
             gen_gap_loss = W[0] * sim_loss + W[1] * dis_loss + W[2] * adv_loss
-            print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, dis_acc: {}, adv_acc: {}".\
-                format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, dis_acc, adv_acc))
+            print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, sim_reward: {}, dis_reward: {}, adv_reward: {}".\
+                format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, sim_R, dis_R, adv_R))
             csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
             writer = csv.writer(csvFile)
             writer.writerow([epoch, step, sim_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
-                             adv_loss.data.cpu().numpy(), dis_acc, adv_acc])
+                             adv_loss.data.cpu().numpy(), sim_R, dis_R, adv_R])
             csvFile.close()
             gen_optimizer.zero_grad()
             gen_gap_loss.backward()

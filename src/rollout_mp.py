@@ -80,7 +80,6 @@ class Rollout(object):
         sim_avg_rewards = [item[0] for item in reward]
         dis_avg_rewards = [item[1] for item in reward]
         adv_avg_rewards = [item[2] for item in reward]
-        print(sim_avg_rewards)
         return sum(sim_avg_rewards) / (1.0 * num), sum(dis_avg_rewards) / (1.0 * num), sum(adv_avg_rewards) / (1.0 * num)
 
     def update_params(self):
