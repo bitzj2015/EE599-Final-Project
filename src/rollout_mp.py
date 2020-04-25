@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.multiprocessing import Pool, Process, Queue
-from similarity import batch_similarity
+# from similarity import batch_similarity
 import ray
 ray.init()
 
@@ -41,7 +41,7 @@ class Rollout(object):
             sim_rewards = []
             dis_rewards = []
             adv_rewards = []
-            for l in range(1, seq_len):
+            for l in tqdm(range(1, seq_len)):
                 data = x_gen[:, 0:l]
                 samples, _ = model.sample(batch_size, data, target)
                 samples_ = torch.stack([samples, target[:,:,1]], axis=2)
@@ -50,8 +50,7 @@ class Rollout(object):
                 adv_pred = adversary(samples_).detach()
                 adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
                 adv_pred = 1 - adv_pred # batch_size
-                sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), index_map)
-                sim_reward = torch.Tensor(sim_reward)
+                sim_reward = 1 - (seq_len - (samples == target[:,:,0]).sum(1).float()) * 1.0 / target[:,:,1].sum(1).float()
                 sim_rewards.append(sim_reward)
                 dis_rewards.append(dis_pred)
                 adv_rewards.append(adv_pred)
@@ -65,12 +64,11 @@ class Rollout(object):
             total_acc += (pred_ == category).sum().item() / batch_size
             adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
             adv_pred = 1 - adv_pred
-            sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), index_map)
-            sim_reward = torch.Tensor(sim_reward)
-
+            sim_reward = 1 - (seq_len - (samples == target[:,:,0]).sum(1).float()) * 1.0 / target[:,:,1].sum(1).float()
             sim_rewards.append(sim_reward)
             dis_rewards.append(dis_pred)
             adv_rewards.append(adv_pred)
+
             sim_rewards = torch.stack(sim_rewards, axis=1) # batch_size * seq_len
             dis_rewards = torch.stack(dis_rewards, axis=1) # batch_size * seq_len
             adv_rewards = torch.stack(adv_rewards, axis=1) # batch_size * seq_len
@@ -79,9 +77,11 @@ class Rollout(object):
         result = [MonteCarlo.remote(i, batch_size, self.own_model, \
             x_gen, target, category, discriminator, adversary, self.index_map) for i in range(num)]
         reward = ray.get(result)
-        dis_avg_rewards = [item[0] for item in reward]
-        adv_avg_rewards = [item[1] for item in reward]
-        return sum(dis_avg_rewards) / (1.0 * num), sum(adv_avg_rewards) / (1.0 * num)
+        sim_avg_rewards = [item[0] for item in reward]
+        dis_avg_rewards = [item[1] for item in reward]
+        adv_avg_rewards = [item[2] for item in reward]
+        print(sim_avg_rewards)
+        return sum(sim_avg_rewards) / (1.0 * num), sum(dis_avg_rewards) / (1.0 * num), sum(adv_avg_rewards) / (1.0 * num)
 
     def update_params(self):
         dic = {}

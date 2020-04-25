@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from similarity import batch_similarity
 
 class Rollout(object):
     '''
@@ -44,8 +43,7 @@ class Rollout(object):
                 adv_pred = adversary(samples_).detach()
                 adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
                 adv_pred = 1 - adv_pred # batch_size
-                sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), self.index_map)
-                sim_reward = torch.Tensor(sim_reward)
+                sim_reward = (seq_len - (samples == target[:,:,0]).sum(1).float()) / target[:,:,1].sum(1).float()
                 if i == 0:
                     sim_rewards.append(sim_reward)
                     dis_rewards.append(dis_pred)
@@ -63,15 +61,14 @@ class Rollout(object):
             _, pred_ = torch.max(adv_pred, axis=-1)
             total_acc += (pred_ == category).sum().item() / batch_size
             adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
-            sim_reward = batch_similarity(samples.data.cpu().numpy(), target[:,:,0].data.cpu().numpy(), self.index_map)
-            sim_reward = torch.Tensor(sim_reward)
             adv_pred = 1 - adv_pred
+            sim_reward = 1 - (seq_len - (samples == target[:,:,0]).sum(1).float()) / target[:,:,1].sum(1).float()
             if i == 0:
                 sim_rewards.append(sim_reward)
                 dis_rewards.append(dis_pred)
                 adv_rewards.append(adv_pred)
             else:
-                sim_rewards[l-1] += sim_reward
+                sim_rewards[seq_len-1] += sim_reward
                 dis_rewards[seq_len-1] += dis_pred
                 adv_rewards[seq_len-1] += adv_pred
         sim_rewards = torch.stack(sim_rewards, axis=1) / (1.0 * num) # batch_size * seq_len

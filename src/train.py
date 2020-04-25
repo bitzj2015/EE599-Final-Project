@@ -442,8 +442,8 @@ def train_gap(model,
             dis_acc = np.mean(dis_rewards[:, -1].data.cpu().numpy())
             adv_acc = 1 - np.mean(adv_rewards[:, -1].data.cpu().numpy())
             sim_rewards = sim_rewards.contiguous().view(-1)
-            dis_rewards = dis_rewards.contiguous().view(-1) - dis_reward_bias
-            adv_rewards = adv_rewards.contiguous().view(-1) - adv_reward_bias
+            dis_rewards = dis_rewards.contiguous().view(-1)# - dis_reward_bias
+            adv_rewards = adv_rewards.contiguous().view(-1)# - adv_reward_bias
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
             print(dis_rewards, adv_rewards)
             if USE_CUDA:
