@@ -155,7 +155,7 @@ elif args.phase == "pretrain_dis":
 elif args.phase == "train_gap":
     # Load pretrained parameters
     try:
-        # generator.load_state_dict(torch.load(GEN_PATH))
+        generator.load_state_dict(torch.load(PRE_GEN_PATH))
         discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
         adversary.load_state_dict(torch.load(PRE_ADV_PATH))
     except:
