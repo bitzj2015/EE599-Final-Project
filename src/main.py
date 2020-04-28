@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 # Load self-defined module
-from generator import Generator, Gen_args
+from generator_seq import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
 from train import pretrain_gen, train_adv, train_dis, train_gap
 from data_loader import LoadData
@@ -58,10 +58,16 @@ train_loader, test_loader, \
 
 
 # Genrator Parameters
+# gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
+#                     emb_dim=64, 
+#                     hidden_dim=64)
 gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
-                    emb_dim=64, 
-                    hidden_dim=64)
-
+                    emb_dim=64,
+                    enc_hid_dim=64,
+                    dec_hid_dim=64,
+                    enc_dropout=0.5,
+                    attn_dim=8,
+                    dec_dropout=0.5)
 # Discriminator Parameters
 dis_args = Dis_args(num_classes=2, 
                     vocab_size=VOCAB_SIZE, 
@@ -91,6 +97,7 @@ if USE_CUDA:
 
 # Enter training phase
 if args.phase == "pretrain_gen":
+    generator.load_state_dict(torch.load(PRE_GEN_PATH))
     # Define optimizer and loss function for generator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
