@@ -50,7 +50,7 @@ class Rollout(object):
                 adv_pred = adversary(samples_).detach()
                 adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
                 adv_pred = 1 - adv_pred # batch_size
-                sim_reward = 1 - (seq_len - (samples == target[:,:,0]).sum(1).float()) * 1.0 / target[:,:,1].sum(1).float()
+                sim_reward = torch.exp(1 - (seq_len - (samples == target[:,:,0]).sum(1).float())) * 1.0 / target[:,:,1].sum(1).float()
                 sim_rewards.append(sim_reward)
                 dis_rewards.append(dis_pred)
                 adv_rewards.append(adv_pred)
