@@ -403,7 +403,7 @@ def train_gap(model,
         W = W.cuda()
     csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
     writer = csv.writer(csvFile)
-    writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "sim_reward", "dis_reward", "adv_reward"])
+    writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "sim_reward", "dis_reward", "adv_reward", "dis_reward_bias", "adv_reward_bias"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
@@ -455,12 +455,14 @@ def train_gap(model,
             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
             # mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
             gen_gap_loss = W[0] * sim_loss + W[1] * dis_loss + W[2] * adv_loss
-            print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, sim_reward: {}, dis_reward: {}, adv_reward: {}".\
-                format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, sim_R, dis_R, adv_R))
+            print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, \
+                sim_reward: {}, dis_reward: {}, adv_reward: {}, dis_r_bias: {}, adv_r_bias: {}".\
+                    format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, \
+                        sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias))
             csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
             writer = csv.writer(csvFile)
             writer.writerow([epoch, step, sim_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
-                             adv_loss.data.cpu().numpy(), sim_R, dis_R, adv_R])
+                             adv_loss.data.cpu().numpy(), sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias])
             csvFile.close()
             gen_optimizer.zero_grad()
             gen_gap_loss.backward()
