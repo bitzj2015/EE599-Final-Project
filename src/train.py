@@ -468,7 +468,7 @@ def train_gap(model,
             rollout.update_params()
         torch.save(generator.state_dict(), GEN_PATH)
 
-        if epoch % 1 == 0:
+        if (epoch + 1) % 5 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
                       train_loader=train_loader,

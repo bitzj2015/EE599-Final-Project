@@ -41,7 +41,7 @@ class Rollout(object):
             sim_rewards = []
             dis_rewards = []
             adv_rewards = []
-            for l in tqdm(range(1, seq_len)):
+            for l in range(1, seq_len):
                 data = x_gen[:, 0:l]
                 samples, _ = model.sample(batch_size, data, target)
                 samples_ = torch.stack([samples, target[:,:,1]], axis=2)
