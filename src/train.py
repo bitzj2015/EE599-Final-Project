@@ -439,8 +439,8 @@ def train_gap(model,
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
             sim_rewards, dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
-            dis_R = np.mean(dis_rewards[:, -1].data.cpu().numpy() - dis_reward_bias)
-            adv_R = np.mean(adv_rewards[:, -1].data.cpu().numpy() - adv_reward_bias)
+            dis_R = np.clip(np.mean(dis_rewards[:, -1].data.cpu().numpy() - dis_reward_bias), 0, 1)
+            adv_R = np.clip(np.mean(adv_rewards[:, -1].data.cpu().numpy() - adv_reward_bias), 0, 1)
             sim_R = np.mean(sim_rewards[:, -1].data.cpu().numpy())
             sim_rewards = sim_rewards.contiguous().view(-1)
             dis_rewards = torch.clamp(dis_rewards.contiguous().view(-1) - dis_reward_bias, 0, 1)
