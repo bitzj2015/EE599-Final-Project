@@ -111,6 +111,7 @@ class Generator(nn.Module):
             outputs = ouputs.cuda()
             output = output.zeros()
         enc_out, hidden = self.encoder(input)
+        outputs[:, 0] = torch.cat([torch.ones(batch_size,1), torch.zeros(batch_size, self.args.vocab_size - 1)], axis=1)
         # first input to the decoder is the <sos> token
         for t in range(1, max_seq_len):
             output, hidden = self.decoder(output, hidden, enc_out)
