@@ -443,8 +443,8 @@ def train_gap(model,
             adv_R = np.mean(adv_rewards[:, -1].data.cpu().numpy())
             sim_R = np.mean(sim_rewards[:, -1].data.cpu().numpy())
             sim_rewards = sim_rewards.contiguous().view(-1)
-            dis_rewards = dis_rewards.contiguous().view(-1)# - dis_reward_bias
-            adv_rewards = adv_rewards.contiguous().view(-1)# - adv_reward_bias
+            dis_rewards = torch.clamp(dis_rewards.contiguous().view(-1) - dis_reward_bias, 0, 1)
+            adv_rewards = torch.clamp(adv_rewards.contiguous().view(-1) - adv_reward_bias, 0, 1)
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
             if USE_CUDA:
                 sim_rewards = sim_rewards.cuda()
@@ -468,7 +468,7 @@ def train_gap(model,
             rollout.update_params()
         torch.save(generator.state_dict(), GEN_PATH)
 
-        if (epoch + 1) % 5 == 0:
+        if (epoch + 1) % 2 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
                       train_loader=train_loader,
