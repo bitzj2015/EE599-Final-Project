@@ -142,7 +142,7 @@ class Generator(nn.Module):
             h, c = h.cuda(), c.cuda()
         return h, c
 
-    def sample(self, batch_size,target,x_gen=None):
+    def sample(self, batch_size, x_gen, target):
         flag = False # whether sample from zero
         if x_gen is None:
             flag = True
@@ -152,13 +152,12 @@ class Generator(nn.Module):
             target = target.cuda()
         if flag:
             output = self.forward(target)
-            samples = output.multinomial(1).view(batch_size, -1)
+            samples = torch.exp(output).multinomial(1).view(batch_size, -1)
         else:
             given_len = x_gen.size(1)
             output = self.forward(target[:, given_len:,: ])
-            samples = [x_gen, output.multinomial(1).view(batch_size, -1)]
-        samples = torch.cat(samples, dim=1)
+            samples = [x_gen, torch.exp(output).multinomial(1).view(batch_size, -1)]
+            samples = torch.cat(samples, dim=1)
         return samples, output
-
 
         
