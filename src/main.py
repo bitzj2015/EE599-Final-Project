@@ -38,7 +38,7 @@ PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
 MC_NUM = 16
-GAP_W = [0.1, 0.1, 0.8]
+GAP_W = [0.0, 0.5, 0.5]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -155,7 +155,7 @@ elif args.phase == "pretrain_dis":
 elif args.phase == "train_gap":
     # Load pretrained parameters
     try:
-        # generator.load_state_dict(torch.load(PRE_GEN_PATH))
+        generator.load_state_dict(torch.load(PRE_GEN_PATH))
         discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
         adversary.load_state_dict(torch.load(PRE_ADV_PATH))
     except:
