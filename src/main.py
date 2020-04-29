@@ -33,7 +33,7 @@ np.random.seed(SEED)
 # Basic Training Paramters
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
-PRE_GEN_EPOCH_NUM = 25
+PRE_GEN_EPOCH_NUM = 50
 PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
@@ -97,7 +97,7 @@ if USE_CUDA:
 
 # Enter training phase
 if args.phase == "pretrain_gen":
-    generator.load_state_dict(torch.load(PRE_GEN_PATH))
+    # generator.load_state_dict(torch.load(PRE_GEN_PATH))
     # Define optimizer and loss function for generator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)

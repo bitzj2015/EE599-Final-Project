@@ -126,9 +126,10 @@ def pretrain_gen(generator,
         writer = csv.writer(csvFile)
         writer.writerow([epoch, train_loss, test_loss])
         csvFile.close()
-        for param_group in gen_optimizer.param_groups:
-            param_group['lr'] *= 0.97
-            print(param_group['lr'])
+        if epoch > 0:
+            for param_group in gen_optimizer.param_groups:
+                param_group['lr'] *= 0.95
+                print(param_group['lr'])
     if PLOT:
         # plot results
         plt.plot(train_loss_list)
