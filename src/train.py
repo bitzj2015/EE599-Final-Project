@@ -17,6 +17,7 @@ def pretrain_gen_epoch(model,
                        optimizer, 
                        index_map,
                        model_path, 
+                       MAX_SEQ_LEN,
                        USE_CUDA=False):
     total_loss = 0.
     total_words = 0.
@@ -38,7 +39,7 @@ def pretrain_gen_epoch(model,
     pred_ = pred_.cpu().numpy()
     target_query = []
     pred_query = []
-    for i in range(72):
+    for i in range(MAX_SEQ_LEN):
         target_query.append(index_map[target_[i]])
         pred_query.append(index_map[pred_[i]])
     print("[INFO] Target query: ", target_query)
@@ -52,6 +53,7 @@ def pretest_gen_epoch(model,
                       optimizer, 
                       index_map,
                       model_path, 
+                      MAX_SEQ_LEN,
                       USE_CUDA=False):
     total_loss = 0.
     total_words = 0.
@@ -71,7 +73,7 @@ def pretest_gen_epoch(model,
     pred_ = pred_.cpu().numpy()
     target_query = []
     pred_query = []
-    for i in range(72):
+    for i in range(MAX_SEQ_LEN):
         target_query.append(index_map[target_[i]])
         pred_query.append(index_map[pred_[i]])
     print("[INFO] Target query: ", target_query)
@@ -84,6 +86,7 @@ def pretrain_gen(generator,
                  gen_criterion, 
                  gen_optimizer, 
                  index_map,
+                 MAX_SEQ_LEN,
                  GEN_PATH, 
                  USE_CUDA, 
                  EPOCH_NUM,
@@ -99,6 +102,7 @@ def pretrain_gen(generator,
                                         gen_optimizer, 
                                         index_map,
                                         GEN_PATH,
+                                        MAX_SEQ_LEN,
                                         USE_CUDA)
         test_loss = pretest_gen_epoch(generator, 
                                       test_loader, 
@@ -106,6 +110,7 @@ def pretrain_gen(generator,
                                       gen_optimizer,
                                       index_map, 
                                       GEN_PATH, 
+                                      MAX_SEQ_LEN,
                                       USE_CUDA)
         print('[INFO] End epoch [%d], \
                       train Loss: %.4f, \

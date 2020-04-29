@@ -110,6 +110,7 @@ if args.phase == "pretrain_gen":
                  gen_criterion=gen_criterion, 
                  gen_optimizer=gen_optimizer,
                  index_map=index_map, 
+                 MAX_SEQ_LEN=MAX_SEQ_LEN,
                  GEN_PATH=PRE_GEN_PATH, 
                  USE_CUDA=USE_CUDA, 
                  EPOCH_NUM=PRE_GEN_EPOCH_NUM,
