@@ -97,7 +97,7 @@ if USE_CUDA:
 
 # Enter training phase
 if args.phase == "pretrain_gen":
-    # generator.load_state_dict(torch.load(PRE_GEN_PATH))
+    generator.load_state_dict(torch.load(PRE_GEN_PATH))
     # Define optimizer and loss function for generator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)

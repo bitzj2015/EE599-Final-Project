@@ -94,6 +94,10 @@ def pretrain_gen(generator,
     print('[INFO] Pretrain generator with MLE ...')
     train_loss_list = []
     test_loss_list = []
+    csvFile = open("../param/pretrain_generator.csv", 'a', newline='')
+    writer = csv.writer(csvFile)
+    writer.writerow(["epoch", "train_loss", "test_loss"])
+    csvFile.close()
     for epoch in range(EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
         train_loss = pretrain_gen_epoch(generator, 
@@ -118,6 +122,13 @@ def pretrain_gen(generator,
                       (epoch, train_loss, test_loss))
         train_loss_list.append(train_loss)
         test_loss_list.append(test_loss)
+        csvFile = open("../param/pretrain_generator.csv", 'a', newline='')
+        writer = csv.writer(csvFile)
+        writer.writerow([epoch, train_loss, test_loss])
+        csvFile.close()
+        for param_group in gen_optimizer.param_groups:
+            param_group['lr'] *= 0.97
+            print(param_group['lr'])
     if PLOT:
         # plot results
         plt.plot(train_loss_list)

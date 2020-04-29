@@ -109,7 +109,7 @@ class Generator(nn.Module):
         output = torch.zeros((batch_size)).long()
         if self.use_cuda:
             outputs = outputs.cuda()
-            output = output.zeros()
+            output = output.cuda()
         enc_out, hidden = self.encoder(input)
         outputs[:, 0] = torch.cat([torch.ones(batch_size,1), torch.zeros(batch_size, self.args.vocab_size - 1)], axis=1)
         # first input to the decoder is the <sos> token
