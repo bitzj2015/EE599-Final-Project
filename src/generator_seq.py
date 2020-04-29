@@ -108,7 +108,7 @@ class Generator(nn.Module):
         outputs = torch.zeros(batch_size, max_seq_len, self.args.vocab_size)
         output = torch.zeros((batch_size)).long()
         if self.use_cuda:
-            outputs = ouputs.cuda()
+            outputs = outputs.cuda()
             output = output.zeros()
         enc_out, hidden = self.encoder(input)
         outputs[:, 0] = torch.cat([torch.ones(batch_size,1), torch.zeros(batch_size, self.args.vocab_size - 1)], axis=1)

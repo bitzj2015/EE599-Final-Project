@@ -51,8 +51,8 @@ DIS_PATH = "../param/discriminator_v3.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
-    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch.json", 
-                                                  word2id_path="../data/word_map.json", 
+    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v2.json", 
+                                                  word2id_path="../data/word_map_v2.json", 
                                                   train_split=0.8,
                                                   BATCH_SIZE=64)
 
