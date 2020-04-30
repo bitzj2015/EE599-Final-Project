@@ -570,7 +570,7 @@ def train_pri(model,
         gen_dis_loss = gen_dis_loss.cuda()
         gen_adv_loss = gen_adv_loss.cuda()
         W = W.cuda()
-    csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+    csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
     writer = csv.writer(csvFile)
     writer.writerow(["epoch", "step", "pri_loss", "pri_sim_loss", \
                      "pri_dis_loss", "pri_adv_loss", "dis_acc", "adv_acc"])
@@ -602,8 +602,8 @@ def train_pri(model,
             adv_pred = adversary(samples_)
             dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
             adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
-            pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / (batch_size * seq_len)
-            pri_adv_loss = -adv_criterion(adv_pred, category) / (batch_size * seq_len)
+            pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / batch_size
+            pri_adv_loss = -adv_criterion(adv_pred, category) / batch_size
             pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size
             pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
             pri_optimizer.zero_grad()
