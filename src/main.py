@@ -171,37 +171,37 @@ elif args.phase == "pretrain_dis":
               EPOCH_NUM=PRE_DIS_EPOCH_NUM,
               PHASE="pretrain", 
               PLOT=False)
-elif args.phase == "train_gap":
-    # Load pretrained parameters
-    try:
-        generator.load_state_dict(torch.load(PRE_GEN_PATH))
-        discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
-        adversary.load_state_dict(torch.load(PRE_ADV_PATH))
-    except:
-        print("[Err] No pretrained model!")
-    # Define optimizer and loss function for discriminator
-    gen_criterion = nn.NLLLoss(reduction='sum')
-    gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
-    dis_criterion = nn.NLLLoss(reduction='sum')
-    dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
-    adv_criterion = nn.NLLLoss(reduction='sum')
-    adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
-    if USE_CUDA:
-        gen_criterion = gen_criterion.cuda()
-        dis_criterion = dis_criterion.cuda()
-        adv_criterion = adv_criterion.cuda()
-    # Pretrain discriminator using CNN text classifier
-    train_gap(model=[generator, discriminator, adversary],
-              criterion=[gen_criterion, dis_criterion, adv_criterion],
-              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
-              train_loader=train_loader,
-              test_loader=test_loader,
-              index_map=index_map,
-              PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
-              USE_CUDA=USE_CUDA,
-              EPOCH_NUM=GAP_EPOCH_NUM,
-              MC_NUM=MC_NUM,
-              W=GAP_W)
+# elif args.phase == "train_gap":
+#     # Load pretrained parameters
+#     try:
+#         generator.load_state_dict(torch.load(PRE_GEN_PATH))
+#         discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
+#         adversary.load_state_dict(torch.load(PRE_ADV_PATH))
+#     except:
+#         print("[Err] No pretrained model!")
+#     # Define optimizer and loss function for discriminator
+#     gen_criterion = nn.NLLLoss(reduction='sum')
+#     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
+#     dis_criterion = nn.NLLLoss(reduction='sum')
+#     dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
+#     adv_criterion = nn.NLLLoss(reduction='sum')
+#     adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
+#     if USE_CUDA:
+#         gen_criterion = gen_criterion.cuda()
+#         dis_criterion = dis_criterion.cuda()
+#         adv_criterion = adv_criterion.cuda()
+#     # Pretrain discriminator using CNN text classifier
+#     train_gap(model=[generator, discriminator, adversary],
+#               criterion=[gen_criterion, dis_criterion, adv_criterion],
+#               optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
+#               train_loader=train_loader,
+#               test_loader=test_loader,
+#               index_map=index_map,
+#               PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
+#               USE_CUDA=USE_CUDA,
+#               EPOCH_NUM=GAP_EPOCH_NUM,
+#               MC_NUM=MC_NUM,
+#               W=GAP_W)
 elif args.phase == "train_pri":
     # Load pretrained parameters
     try:
