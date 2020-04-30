@@ -145,6 +145,7 @@ Define pretrain module for adversary
 '''
 def train_adv_epoch(model,
                     generator,
+                    privatizer,
                     dataloader, 
                     criterion, 
                     optimizer, 
@@ -160,6 +161,11 @@ def train_adv_epoch(model,
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         if generator != None:
+            if privatizer == None:
+                pred = generator.forward(data)
+            else:
+                _, noise_hidden = privatizer.forward(input=data)
+                pred, _ = generator.forward_with_noise(input=data, noise_hidden=noise_hidden)
             pred = generator.forward(data)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(data.size(0), -1)
@@ -181,6 +187,7 @@ def train_adv_epoch(model,
 
 def test_adv_epoch(model, 
                    generator,
+                   privatizer,
                    dataloader, 
                    criterion, 
                    optimizer, 
@@ -195,7 +202,11 @@ def test_adv_epoch(model,
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         if generator != None:
-            pred = generator.forward(data)
+            if privatizer == None:
+                pred = generator.forward(data)
+            else:
+                _, noise_hidden = privatizer.forward(input=data)
+                pred, _ = generator.forward_with_noise(input=data, noise_hidden=noise_hidden)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(data.size(0), -1)
             samples = torch.stack([pred_, data[:,:,1]], axis=2)
@@ -213,6 +224,7 @@ def test_adv_epoch(model,
 
 def train_adv(adversary,
               generator,
+              privatizer,
               train_loader, 
               test_loader, 
               adv_criterion, 
@@ -231,13 +243,15 @@ def train_adv(adversary,
         print('[INFO] Start epoch [%d] ...'% (epoch))
         train_loss, train_acc = train_adv_epoch(adversary,
                                                 generator, 
+                                                privatizer,
                                                 train_loader, 
                                                 adv_criterion, 
                                                 adv_optimizer, 
                                                 ADV_PATH, 
                                                 USE_CUDA)
         test_loss, test_acc = test_adv_epoch(adversary,
-                                             generator, 
+                                             generator,
+                                             privatizer, 
                                              test_loader, 
                                              adv_criterion, 
                                              adv_optimizer, 
@@ -273,6 +287,7 @@ Define train discriminator
 '''
 def train_dis(discriminator, 
               generator,
+              privatizer,
               train_loader,
               test_loader,
               dis_criterion,
@@ -301,7 +316,11 @@ def train_dis(discriminator,
                 data = data.cuda()
                 label = label.cuda()
                 label_ = label_.cuda()
-            pred = generator.forward(data)
+            if privatizer == None:
+                pred = generator.forward(data)
+            else:
+                _, noise_hidden = privatizer.forward(input=data)
+                pred, _ = generator.forward_with_noise(input=data, noise_hidden=noise_hidden)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(batch_size, -1)
             if pred_.size(1) != seq_len:
@@ -330,6 +349,7 @@ def train_dis(discriminator,
                       (epoch, total_loss, total_acc))
     test_loss, test_acc = test_dis(discriminator, 
                                    generator,
+                                   privatizer,
                                    test_loader,
                                    dis_criterion,
                                    dis_optimizer,
@@ -339,6 +359,7 @@ def train_dis(discriminator,
 
 def test_dis(discriminator, 
              generator,
+             privatizer,
              test_loader,
              dis_criterion,
              dis_optimizer,
@@ -360,7 +381,11 @@ def test_dis(discriminator,
             data = data.cuda()
             label = label.cuda()
             label_ = label_.cuda()
-        pred = generator.forward(data)
+        if privatizer == None:
+            pred = generator.forward(data)
+        else:
+            _, noise_hidden = privatizer.forward(input=data)
+            pred, _ = generator.forward_with_noise(input=data, noise_hidden=noise_hidden)
         _, pred_ = torch.max(pred, axis=-1)
         pred_ = pred_.view(batch_size, -1)
         if pred_.size(1) != seq_len:
@@ -490,6 +515,7 @@ def train_gap(model,
         if (epoch + 1) % 2 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
+                      privatizer=None,
                       train_loader=train_loader,
                       test_loader=test_loader,
                       dis_criterion=dis_criterion,
@@ -501,6 +527,7 @@ def train_gap(model,
                       PLOT=False)
             train_adv(adversary=adversary, 
                       generator=generator,
+                      privatizer=None,
                       train_loader=train_loader, 
                       test_loader=test_loader, 
                       adv_criterion=adv_criterion,
@@ -549,63 +576,78 @@ def train_pri(model,
                      "pri_dis_loss", "pri_adv_loss", "dis_acc", "adv_acc"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
-        ## Train the generator for one step
-        dis_reward_bias = 0
-        adv_reward_bias = 0
-        step = 0
-        for batch in tqdm(train_loader): 
-            step += 1
-            data, category = batch['x'], batch['u'].squeeze()
-            batch_size = data.size(0)
-            seq_len = data.size(1)
-            dis_pred_label = torch.ones((batch_size)).long()
-            if USE_CUDA:
-                data, category, dis_pred_label = \
-                data.cuda(), category.cuda(), dis_pred_label.cuda()
-            _, noise_hidden = privatizer.forward(input=data)
-            samples, hidden = generator.sample_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
-            samples_ = torch.stack([samples, data[:,:,1]], axis=2)
-            dis_pred = discriminator(samples_)
-            adv_pred = adversary(samples_)
-            dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
-            adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
-            pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / (batch_size * seq_len)
-            pri_adv_loss = -adv_criterion(adv_pred, category) / (batch_size * seq_len)
-            pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size
-            pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
-            pri_optimizer.zero_grad()
-            pri_loss.backward()
-            pri_optimizer.step()
+    #     ## Train the generator for one step
+    #     dis_reward_bias = 0
+    #     adv_reward_bias = 0
+    #     step = 0
+    #     total_pri_loss = 0
+    #     total_pri_sim_loss = 0
+    #     total_pri_dis_loss = 0
+    #     total_pri_adv_loss = 0
+    #     total_dis_acc = 0
+    #     total_adv_acc = 0
+    #     for batch in tqdm(train_loader): 
+    #         step += 1
+    #         data, category = batch['x'], batch['u'].squeeze()
+    #         batch_size = data.size(0)
+    #         seq_len = data.size(1)
+    #         dis_pred_label = torch.ones((batch_size)).long()
+    #         if USE_CUDA:
+    #             data, category, dis_pred_label = \
+    #             data.cuda(), category.cuda(), dis_pred_label.cuda()
+    #         _, noise_hidden = privatizer.forward(input=data)
+    #         samples, hidden = generator.sample_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
+    #         samples_ = torch.stack([samples, data[:,:,1]], axis=2)
+    #         dis_pred = discriminator(samples_)
+    #         adv_pred = adversary(samples_)
+    #         dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
+    #         adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
+    #         pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / (batch_size * seq_len)
+    #         pri_adv_loss = -adv_criterion(adv_pred, category) / (batch_size * seq_len)
+    #         pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size
+    #         pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
+    #         pri_optimizer.zero_grad()
+    #         pri_loss.backward()
+    #         pri_optimizer.step()
 
-            csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
-            writer = csv.writer(csvFile)
-            writer.writerow([epoch, step, pri_loss.item(), pri_sim_loss.item(), \
-                             pri_dis_loss.item(), pri_adv_loss.item(), \
-                             dis_acc.data.cpu().numpy(), adv_acc.data.cpu().numpy()])
-            csvFile.close()
+    #         total_pri_loss += pri_loss.item()
+    #         total_pri_sim_loss += pri_sim_loss.item()
+    #         total_pri_dis_loss += pri_dis_loss.item()
+    #         total_pri_adv_loss += pri_adv_loss.item()
+    #         total_dis_acc += dis_acc.data.cpu().numpy()
+    #         total_adv_acc += adv_acc.data.cpu().numpy()
 
-        torch.save(privatizer.state_dict(), PRI_PATH)
+    #     csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
+    #     writer = csv.writer(csvFile)
+    #     writer.writerow([epoch, total_pri_loss / step, total_pri_sim_loss / step, \
+    #                         total_pri_dis_loss / step, total_pri_adv_loss / step, \
+    #                         total_dis_acc / step, total_adv_acc / step])
+    #     csvFile.close()
+
+    #     torch.save(privatizer.state_dict(), PRI_PATH)
 
         if (epoch + 1) % 2 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
+                      privatizer=privatizer,
                       train_loader=train_loader,
                       test_loader=test_loader,
                       dis_criterion=dis_criterion,
                       dis_optimizer=dis_optimizer,
                       DIS_PATH=DIS_PATH,
                       USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=5,
+                      EPOCH_NUM=1,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=False)
             train_adv(adversary=adversary, 
                       generator=generator,
+                      privatizer=privatizer,
                       train_loader=train_loader, 
                       test_loader=test_loader, 
                       adv_criterion=adv_criterion,
                       adv_optimizer=adv_optimizer, 
                       ADV_PATH=ADV_PATH, 
                       USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=5,
+                      EPOCH_NUM=1,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=True)
