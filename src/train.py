@@ -626,7 +626,7 @@ def train_pri(model,
 
         if epoch > 0:
             for param_group in pri_optimizer.param_groups:
-                param_group['lr'] *= 0.95
+                param_group['lr'] *= 0.98
                 print(param_group['lr'])
         torch.save(privatizer.state_dict(), PRI_PATH)
 
