@@ -205,6 +205,7 @@ elif args.phase == "train_gap":
 elif args.phase == "train_pri":
     # Load pretrained parameters
     try:
+        # privatizer.load_state_dict(torch.load(PRI_PATH))
         generator.load_state_dict(torch.load(PRE_GEN_PATH))
         discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
         adversary.load_state_dict(torch.load(PRE_ADV_PATH))

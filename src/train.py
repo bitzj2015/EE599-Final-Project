@@ -165,8 +165,8 @@ def train_adv_epoch(model,
                 pred = generator.forward(data)
             else:
                 noise_out, noise_hidden = privatizer.forward(input=data)
-                pred, _, _ = generator.sample_with_noise(batch_size, input=data, \
-                                    noise_out=noise_out, noise_hidden=noise_hidden)
+                pred, _, _ = generator.forward_with_noise(input=data,\
+                    noise_out=noise_out, noise_hidden=noise_hidden)
             pred = generator.forward(data)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(data.size(0), -1)
@@ -207,8 +207,8 @@ def test_adv_epoch(model,
                 pred = generator.forward(data)
             else:
                 noise_out, noise_hidden = privatizer.forward(input=data)
-                pred, _, _ = generator.sample_with_noise(batch_size, input=data, \
-                                    noise_out=noise_out, noise_hidden=noise_hidden)
+                pred, _, _ = generator.forward_with_noise(input=data,\
+                    noise_out=noise_out, noise_hidden=noise_hidden)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(data.size(0), -1)
             samples = torch.stack([pred_, data[:,:,1]], axis=2)
@@ -322,8 +322,8 @@ def train_dis(discriminator,
                 pred = generator.forward(data)
             else:
                 noise_out, noise_hidden = privatizer.forward(input=data)
-                pred, _, _ = generator.sample_with_noise(batch_size, input=data, \
-                                    noise_out=noise_out, noise_hidden=noise_hidden)
+                pred, _, _ = generator.forward_with_noise(input=data,\
+                    noise_out=noise_out, noise_hidden=noise_hidden)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(batch_size, -1)
             if pred_.size(1) != seq_len:
@@ -388,8 +388,8 @@ def test_dis(discriminator,
             pred = generator.forward(data)
         else:
             noise_out, noise_hidden = privatizer.forward(input=data)
-            pred, _, _ = generator.sample_with_noise(batch_size, input=data, \
-                                noise_out=noise_out, noise_hidden=noise_hidden)
+            pred, _, _ = generator.forward_with_noise(input=data,\
+                noise_out=noise_out, noise_hidden=noise_hidden)
         _, pred_ = torch.max(pred, axis=-1)
         pred_ = pred_.view(batch_size, -1)
         if pred_.size(1) != seq_len:
@@ -609,8 +609,8 @@ def train_pri(model,
             adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
             pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / batch_size
             pri_adv_loss = -adv_criterion(adv_pred, category) / batch_size
-            pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size + \
-                (out - noise_out).norm(p=2, dim=1).sum() / (batch_size * seq_len)
+            pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size # + \
+                #(out - noise_out).norm(p=2, dim=1).sum() / (batch_size * seq_len)
             pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
             pri_optimizer.zero_grad()
             pri_loss.backward()
