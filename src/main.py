@@ -27,6 +27,7 @@ parser.add_argument('--phase', help="batch size during training", type=str, defa
 parser.add_argument('--w0', help='w0', type=float, default=0.3)
 parser.add_argument('--w1', help='w1', type=float, default=0.3)
 parser.add_argument('--w2', help='w2', type=float, default=0.3)
+parser.add_argument('--v', help='version', type=str, default="0")
 args = parser.parse_args()
 
 # Set random seed
@@ -42,7 +43,7 @@ PRE_ADV_EPOCH_NUM = 2
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.1, 0.2, 0.8]
+GAP_W = [args.w0, args.w1, args.w2]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -52,10 +53,10 @@ PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
 PRE_PRI_PATH = "../param/pre_privatizer.pkl"
 
-GEN_PATH = "../param/generator_v3.pkl"
-ADV_PATH = "../param/adversary_v3.pkl"
-DIS_PATH = "../param/discriminator_v3.pkl"
-PRI_PATH = "../param/privatizer_v3.pkl"
+GEN_PATH = "../param/generator_v" + args.v".pkl"
+ADV_PATH = "../param/adversary_v" + args.v".pkl"
+DIS_PATH = "../param/discriminator_v" + args.v".pkl"
+PRI_PATH = "../param/privatizer_v" + args.v".pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
