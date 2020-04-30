@@ -576,57 +576,57 @@ def train_pri(model,
                      "pri_dis_loss", "pri_adv_loss", "dis_acc", "adv_acc"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
-    #     ## Train the generator for one step
-    #     dis_reward_bias = 0
-    #     adv_reward_bias = 0
-    #     step = 0
-    #     total_pri_loss = 0
-    #     total_pri_sim_loss = 0
-    #     total_pri_dis_loss = 0
-    #     total_pri_adv_loss = 0
-    #     total_dis_acc = 0
-    #     total_adv_acc = 0
-    #     for batch in tqdm(train_loader): 
-    #         step += 1
-    #         data, category = batch['x'], batch['u'].squeeze()
-    #         batch_size = data.size(0)
-    #         seq_len = data.size(1)
-    #         dis_pred_label = torch.ones((batch_size)).long()
-    #         if USE_CUDA:
-    #             data, category, dis_pred_label = \
-    #             data.cuda(), category.cuda(), dis_pred_label.cuda()
-    #         _, noise_hidden = privatizer.forward(input=data)
-    #         samples, hidden = generator.sample_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
-    #         samples_ = torch.stack([samples, data[:,:,1]], axis=2)
-    #         dis_pred = discriminator(samples_)
-    #         adv_pred = adversary(samples_)
-    #         dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
-    #         adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
-    #         pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / (batch_size * seq_len)
-    #         pri_adv_loss = -adv_criterion(adv_pred, category) / (batch_size * seq_len)
-    #         pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size
-    #         pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
-    #         pri_optimizer.zero_grad()
-    #         pri_loss.backward()
-    #         pri_optimizer.step()
+        ## Train the generator for one step
+        dis_reward_bias = 0
+        adv_reward_bias = 0
+        step = 0
+        total_pri_loss = 0
+        total_pri_sim_loss = 0
+        total_pri_dis_loss = 0
+        total_pri_adv_loss = 0
+        total_dis_acc = 0
+        total_adv_acc = 0
+        for batch in tqdm(train_loader): 
+            step += 1
+            data, category = batch['x'], batch['u'].squeeze()
+            batch_size = data.size(0)
+            seq_len = data.size(1)
+            dis_pred_label = torch.ones((batch_size)).long()
+            if USE_CUDA:
+                data, category, dis_pred_label = \
+                data.cuda(), category.cuda(), dis_pred_label.cuda()
+            _, noise_hidden = privatizer.forward(input=data)
+            samples, hidden = generator.sample_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
+            samples_ = torch.stack([samples, data[:,:,1]], axis=2)
+            dis_pred = discriminator(samples_)
+            adv_pred = adversary(samples_)
+            dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
+            adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
+            pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / (batch_size * seq_len)
+            pri_adv_loss = -adv_criterion(adv_pred, category) / (batch_size * seq_len)
+            pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size
+            pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
+            pri_optimizer.zero_grad()
+            pri_loss.backward()
+            pri_optimizer.step()
 
-    #         total_pri_loss += pri_loss.item()
-    #         total_pri_sim_loss += pri_sim_loss.item()
-    #         total_pri_dis_loss += pri_dis_loss.item()
-    #         total_pri_adv_loss += pri_adv_loss.item()
-    #         total_dis_acc += dis_acc.data.cpu().numpy()
-    #         total_adv_acc += adv_acc.data.cpu().numpy()
+            total_pri_loss += pri_loss.item()
+            total_pri_sim_loss += pri_sim_loss.item()
+            total_pri_dis_loss += pri_dis_loss.item()
+            total_pri_adv_loss += pri_adv_loss.item()
+            total_dis_acc += dis_acc.data.cpu().numpy()
+            total_adv_acc += adv_acc.data.cpu().numpy()
 
-    #     csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
-    #     writer = csv.writer(csvFile)
-    #     writer.writerow([epoch, total_pri_loss / step, total_pri_sim_loss / step, \
-    #                         total_pri_dis_loss / step, total_pri_adv_loss / step, \
-    #                         total_dis_acc / step, total_adv_acc / step])
-    #     csvFile.close()
+        csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
+        writer = csv.writer(csvFile)
+        writer.writerow([epoch, total_pri_loss / step, total_pri_sim_loss / step, \
+                            total_pri_dis_loss / step, total_pri_adv_loss / step, \
+                            total_dis_acc / step, total_adv_acc / step])
+        csvFile.close()
 
-    #     torch.save(privatizer.state_dict(), PRI_PATH)
+        torch.save(privatizer.state_dict(), PRI_PATH)
 
-        if (epoch + 1) % 2 == 0:
+        if (epoch + 1) % 5 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
                       privatizer=privatizer,
@@ -636,7 +636,7 @@ def train_pri(model,
                       dis_optimizer=dis_optimizer,
                       DIS_PATH=DIS_PATH,
                       USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=1,
+                      EPOCH_NUM=2,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=False)
             train_adv(adversary=adversary, 
@@ -648,6 +648,6 @@ def train_pri(model,
                       adv_optimizer=adv_optimizer, 
                       ADV_PATH=ADV_PATH, 
                       USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=1,
+                      EPOCH_NUM=2,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=True)

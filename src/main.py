@@ -35,8 +35,8 @@ np.random.seed(SEED)
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 50
-PRE_ADV_EPOCH_NUM = 5
-PRE_DIS_EPOCH_NUM = 5
+PRE_ADV_EPOCH_NUM = 2
+PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 20
 MC_NUM = 16
 GAP_W = [0.1, 0.5, 0.5]
@@ -141,6 +141,7 @@ elif args.phase == "pretrain_adv":
     # Pretrain adversary using CNN text classifier
     train_adv(adversary=adversary, 
               generator=None,
+              privatizer=None,
               train_loader=train_loader, 
               test_loader=test_loader, 
               adv_criterion=adv_criterion,
@@ -160,6 +161,7 @@ elif args.phase == "pretrain_dis":
     # Pretrain discriminator using CNN text classifier
     train_dis(discriminator=discriminator, 
               generator=generator,
+              privatizer=None,
               train_loader=train_loader,
               test_loader=test_loader,
               dis_criterion=dis_criterion,
