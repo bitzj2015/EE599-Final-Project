@@ -16,7 +16,7 @@ import torch.optim as optim
 from generator_seq import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
 from privatizer import Privatizer, Pri_args
-from train import pretrain_gen, train_adv, train_dis, train_gap, train_pri
+from train import pretrain_gen, train_adv, train_dis, train_pri
 from data_loader import LoadData
 
 # Set argument parser
