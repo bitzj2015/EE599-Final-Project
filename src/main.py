@@ -16,7 +16,7 @@ import torch.optim as optim
 from generator_seq import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
 from privatizer import Privatizer, Pri_args
-from train import pretrain_gen, train_adv, train_dis, train_gap
+from train import pretrain_gen, train_adv, train_dis, train_gap, train_pri
 from data_loader import LoadData
 
 # Set argument parser
@@ -39,7 +39,7 @@ PRE_ADV_EPOCH_NUM = 5
 PRE_DIS_EPOCH_NUM = 5
 GAP_EPOCH_NUM = 20
 MC_NUM = 16
-GAP_W = [0.0, 0.5, 0.5]
+GAP_W = [0.1, 0.5, 0.5]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -103,7 +103,7 @@ adv_args = Dis_args(num_classes=3,
 generator = Generator(gen_args, USE_CUDA)
 discriminator = Discriminator(dis_args)
 adversary = Discriminator(adv_args)
-privatizer = Privatizer(Pri_args)
+privatizer = Privatizer(pri_args)
 
 if USE_CUDA:
     generator = generator.cuda()
@@ -184,6 +184,37 @@ elif args.phase == "train_gap":
     dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
     adv_criterion = nn.NLLLoss(reduction='sum')
     adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
+    if USE_CUDA:
+        gen_criterion = gen_criterion.cuda()
+        dis_criterion = dis_criterion.cuda()
+        adv_criterion = adv_criterion.cuda()
+    # Pretrain discriminator using CNN text classifier
+    train_gap(model=[generator, discriminator, adversary],
+              criterion=[gen_criterion, dis_criterion, adv_criterion],
+              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
+              train_loader=train_loader,
+              test_loader=test_loader,
+              index_map=index_map,
+              PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
+              USE_CUDA=USE_CUDA,
+              EPOCH_NUM=GAP_EPOCH_NUM,
+              MC_NUM=MC_NUM,
+              W=GAP_W)
+elif args.phase == "train_pri":
+    # Load pretrained parameters
+    try:
+        generator.load_state_dict(torch.load(PRE_GEN_PATH))
+        discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
+        adversary.load_state_dict(torch.load(PRE_ADV_PATH))
+    except:
+        print("[Err] No pretrained model!")
+    # Define optimizer and loss function for discriminator
+    gen_criterion = nn.NLLLoss(reduction='sum')
+    gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
+    dis_criterion = nn.NLLLoss(reduction='sum')
+    dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
+    adv_criterion = nn.NLLLoss(reduction='sum')
+    adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
     pri_criterion = nn.NLLLoss(reduction='sum')
     pri_optimizer = optim.Adam(privatizer.parameters(), lr=PRI_LR)
     if USE_CUDA:
@@ -192,7 +223,7 @@ elif args.phase == "train_gap":
         adv_criterion = adv_criterion.cuda()
         pri_criterion = pri_criterion.cuda()
     # Pretrain discriminator using CNN text classifier
-    train_gap(model=[generator, discriminator, adversary, privatizer],
+    train_pri(model=[generator, discriminator, adversary, privatizer],
               criterion=[gen_criterion, dis_criterion, adv_criterion, pri_criterion],
               optimizer=[gen_optimizer, dis_optimizer, adv_optimizer, pri_optimizer],
               train_loader=train_loader,

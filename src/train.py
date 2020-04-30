@@ -558,12 +558,12 @@ def train_pri(model,
             data, category = batch['x'], batch['u'].squeeze()
             batch_size = data.size(0)
             seq_len = data.size(1)
-            dis_pred_label = torch.ones((batch_size, 1)).long()
+            dis_pred_label = torch.ones((batch_size)).long()
             if USE_CUDA:
                 data, category, dis_pred_label = \
                 data.cuda(), category.cuda(), dis_pred_label.cuda()
             _, noise_hidden = privatizer.forward(input=data)
-            samples, hidden = generator.forward_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
+            samples, hidden = generator.sample_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
             samples_ = torch.stack([samples, data[:,:,1]], axis=2)
             dis_pred = discriminator(samples_)
             adv_pred = adversary(samples_)
@@ -579,8 +579,8 @@ def train_pri(model,
 
             csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
             writer = csv.writer(csvFile)
-            writer.writerow([epoch, step, pri_loss.data.cpu.numpy(), pri_sim_loss.data.cpu.numpy(), \
-                             pri_dis_loss.data.cpu.numpy(), pri_adv_loss.data.cpu.numpy(), \
+            writer.writerow([epoch, step, pri_loss.item(), pri_sim_loss.item(), \
+                             pri_dis_loss.item(), pri_adv_loss.item(), \
                              dis_acc.data.cpu().numpy(), adv_acc.data.cpu().numpy()])
             csvFile.close()
 

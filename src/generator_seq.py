@@ -130,7 +130,7 @@ class Generator(nn.Module):
         """
         if noise_hidden.size(1) != self.args.dec_hid_dim:
             print("[Err] Dimension mismatch in noise_hidden! Shoud be {} but get {}.".\
-                format(self.args.dec_hid_dim, noise_hidden.size(1))
+                format(self.args.dec_hid_dim, noise_hidden.size(1)))
         batch_size = input.size(0)
         max_seq_len = input.size(1)
         outputs = torch.zeros(batch_size, max_seq_len, self.args.vocab_size)
@@ -158,13 +158,13 @@ class Generator(nn.Module):
             h, c = h.cuda(), c.cuda()
         return h, c
     
-    def sample_with_noise(self, batch_size, target, noise_hidden):
+    def sample_with_noise(self, batch_size, input, noise_hidden):
         if self.use_cuda:
-            target = target.cuda()
-        output = self.forward_with_noise(target, noise_hidden)
+            input = input.cuda()
+        output, hidden = self.forward_with_noise(input, noise_hidden)
         _, pred_ = torch.max(output, axis=-1)
         samples = pred_.view(batch_size, -1)
-        return samples, output
+        return samples, hidden
 
 
     def sample(self, batch_size, x_gen, target):
