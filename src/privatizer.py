@@ -29,7 +29,8 @@ class Privatizer(nn.Module):
         self.args = P_args
         self.use_cuda = use_cuda
         # Encoder
-        self.embedding = nn.Embedding(self.args.vocab_size, self.args.emb_dim)
+        # self.embedding = nn.Embedding(self.args.vocab_size, self.args.emb_dim)
+        self.embedding = nn.Linear(self.args.enc_hid_dim * 2, self.args.emb_dim)
         self.enc_rnn = nn.GRU(self.args.emb_dim, self.args.enc_hid_dim, bidirectional = True, batch_first=True)
         self.enc_fc = nn.Linear(self.args.enc_hid_dim * 2, self.args.dec_hid_dim)
         self.enc_dropout = nn.Dropout(self.args.enc_dropout)
@@ -37,9 +38,10 @@ class Privatizer(nn.Module):
 
     def forward(self, input):
         # Encoder
-        x = input[:,:,0]
-        mask = input[:,:,1].float()
-        emb = self.enc_dropout(self.embedding(x) * mask.unsqueeze(2))
+        # x = input[:,:,0]
+        # mask = input[:,:,1].float()
+        # emb = self.enc_dropout(self.embedding(x) * mask.unsqueeze(2))
+        emb = self.enc_dropout(self.embedding(input))
         
         enc_out, enc_hid = self.enc_rnn(emb)
         enc_hid = torch.tanh(self.enc_fc(torch.cat((enc_hid[-2,:,:], enc_hid[-1,:,:]), dim = 1)))
