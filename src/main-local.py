@@ -37,22 +37,22 @@ USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 50
 PRE_ADV_EPOCH_NUM = 2
 PRE_DIS_EPOCH_NUM = 2
-GAP_EPOCH_NUM = 120
+GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.1, 0.2, 0.8]
-GEN_LR = 0.00215
-ADV_LR = 0.00215
-DIS_LR = 0.00215
-PRI_LR = 0.00215
+GAP_W = [0.5, 0.5, 0.0]
+GEN_LR = 0.01
+ADV_LR = 0.01
+DIS_LR = 0.01
+PRI_LR = 0.01
 PRE_GEN_PATH = "../param/pre_generator.pkl"
 PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
 PRE_PRI_PATH = "../param/pre_privatizer.pkl"
 
-GEN_PATH = "../param/generator_v3.pkl"
-ADV_PATH = "../param/adversary_v3.pkl"
-DIS_PATH = "../param/discriminator_v3.pkl"
-PRI_PATH = "../param/privatizer_v3.pkl"
+GEN_PATH = "../param/generator_v4.pkl"
+ADV_PATH = "../param/adversary_v4.pkl"
+DIS_PATH = "../param/discriminator_v4.pkl"
+PRI_PATH = "../param/privatizer_v4.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
@@ -205,7 +205,7 @@ elif args.phase == "pretrain_dis":
 elif args.phase == "train_pri":
     # Load pretrained parameters
     try:
-        privatizer.load_state_dict(torch.load(PRI_PATH))
+        # privatizer.load_state_dict(torch.load(PRI_PATH))
         generator.load_state_dict(torch.load(PRE_GEN_PATH))
         discriminator.load_state_dict(torch.load(DIS_PATH))
         adversary.load_state_dict(torch.load(ADV_PATH))
