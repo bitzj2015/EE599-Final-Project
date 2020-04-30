@@ -123,6 +123,7 @@ class Generator(nn.Module):
 
     def forward_with_noise(self,
                            input,
+                           noise_out,
                            noise_hidden):
         """
         Args:
@@ -142,14 +143,14 @@ class Generator(nn.Module):
         outputs[:, 0] = torch.cat([torch.ones(batch_size,1), torch.zeros(batch_size, self.args.vocab_size - 1)], axis=1)
         # first input to the decoder is the <sos> token
         dec_hidden = noise_hidden
-
+        enc_out_ = noise_out
         for t in range(1, max_seq_len):
-            output, dec_hidden = self.decoder(output, dec_hidden, enc_out)
+            output, dec_hidden = self.decoder(output, dec_hidden, enc_out_)
             outputs[:, t] = output
             top1 = output.max(1)[1]
             output = top1
         outputs = F.log_softmax(outputs.contiguous().view(-1, self.args.vocab_size), dim=1)
-        return outputs, hidden
+        return outputs, enc_out, hidden
 
     def init_hidden(self, batch_size):
         h = torch.zeros((1, batch_size, self.args.hidden_dim))
@@ -158,13 +159,13 @@ class Generator(nn.Module):
             h, c = h.cuda(), c.cuda()
         return h, c
     
-    def sample_with_noise(self, batch_size, input, noise_hidden):
+    def sample_with_noise(self, batch_size, input, noise_out, noise_hidden):
         if self.use_cuda:
             input = input.cuda()
-        output, hidden = self.forward_with_noise(input, noise_hidden)
+        output, ori_out, ori_hidden = self.forward_with_noise(input, noise_out, noise_hidden)
         _, pred_ = torch.max(output, axis=-1)
         samples = pred_.view(batch_size, -1)
-        return samples, hidden
+        return samples, ori_out, ori_hidden
 
 
     def sample(self, batch_size, x_gen, target):
