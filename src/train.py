@@ -624,6 +624,10 @@ def train_pri(model,
                             total_dis_acc / step, total_adv_acc / step])
         csvFile.close()
 
+        if epoch > 0:
+            for param_group in pri_optimizer.param_groups:
+                param_group['lr'] *= 0.95
+                print(param_group['lr'])
         torch.save(privatizer.state_dict(), PRI_PATH)
 
         if (epoch + 1) % 5 == 0:
