@@ -510,3 +510,102 @@ def train_gap(model,
                       EPOCH_NUM=5,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=True)
+
+
+'''
+Define training privatizer
+'''
+def train_pri(model,
+              criterion,
+              optimizer,
+              train_loader,
+              test_loader,
+              index_map,
+              PATH,
+              USE_CUDA,
+              EPOCH_NUM,
+              MC_NUM=16,
+              W=[0.2,0.2,0.6]):
+    generator, discriminator, adversary, privatizer = model
+    gen_criterion, dis_criterion, adv_criterion, pri_criterion = criterion
+    gen_optimizer, dis_optimizer, adv_optimizer, pri_optimizer = optimizer
+    GEN_PATH, DIS_PATH, ADV_PATH, PRI_PATH = PATH
+
+    # Adversarial Training
+
+    print("[INFO] Start training GAP ...")
+    gen_sim_loss = GANLoss()
+    gen_dis_loss = GANLoss()
+    gen_adv_loss = GANLoss()
+    W = torch.Tensor(W)
+    if USE_CUDA:
+        gen_sim_loss = gen_sim_loss.cuda()
+        gen_dis_loss = gen_dis_loss.cuda()
+        gen_adv_loss = gen_adv_loss.cuda()
+        W = W.cuda()
+    csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+    writer = csv.writer(csvFile)
+    writer.writerow(["epoch", "step", "pri_loss", "pri_sim_loss", \
+                     "pri_dis_loss", "pri_adv_loss", "dis_acc", "adv_acc"])
+    csvFile.close()
+    for epoch in range(EPOCH_NUM):
+        ## Train the generator for one step
+        dis_reward_bias = 0
+        adv_reward_bias = 0
+        step = 0
+        for batch in tqdm(train_loader): 
+            step += 1
+            data, category = batch['x'], batch['u'].squeeze()
+            batch_size = data.size(0)
+            seq_len = data.size(1)
+            dis_pred_label = torch.ones((batch_size, 1)).long()
+            if USE_CUDA:
+                data, category, dis_pred_label = \
+                data.cuda(), category.cuda(), dis_pred_label.cuda()
+            _, noise_hidden = privatizer.forward(input=data)
+            samples, hidden = generator.forward_with_noise(batch_size, input=data, noise_hidden=noise_hidden)
+            samples_ = torch.stack([samples, data[:,:,1]], axis=2)
+            dis_pred = discriminator(samples_)
+            adv_pred = adversary(samples_)
+            dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
+            adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
+            pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / (batch_size * seq_len)
+            pri_adv_loss = -adv_criterion(adv_pred, category) / (batch_size * seq_len)
+            pri_sim_loss = (hidden - noise_hidden).norm(p=2, dim=1).sum() / batch_size
+            pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
+            pri_optimizer.zero_grad()
+            pri_loss.backward()
+            pri_optimizer.step()
+
+            csvFile = open("../param/train_privatizer_loss.csv", 'a', newline='')
+            writer = csv.writer(csvFile)
+            writer.writerow([epoch, step, pri_loss.data.cpu.numpy(), pri_sim_loss.data.cpu.numpy(), \
+                             pri_dis_loss.data.cpu.numpy(), pri_adv_loss.data.cpu.numpy(), \
+                             dis_acc.data.cpu().numpy(), adv_acc.data.cpu().numpy()])
+            csvFile.close()
+
+        torch.save(privatizer.state_dict(), PRI_PATH)
+
+        if (epoch + 1) % 2 == 0:
+            train_dis(discriminator=discriminator, 
+                      generator=generator,
+                      train_loader=train_loader,
+                      test_loader=test_loader,
+                      dis_criterion=dis_criterion,
+                      dis_optimizer=dis_optimizer,
+                      DIS_PATH=DIS_PATH,
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=5,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=False)
+            train_adv(adversary=adversary, 
+                      generator=generator,
+                      train_loader=train_loader, 
+                      test_loader=test_loader, 
+                      adv_criterion=adv_criterion,
+                      adv_optimizer=adv_optimizer, 
+                      ADV_PATH=ADV_PATH, 
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=5,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=True)

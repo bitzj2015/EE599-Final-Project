@@ -15,6 +15,7 @@ import torch.optim as optim
 # Load self-defined module
 from generator_seq import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
+from privatizer import Privatizer, Pri_args
 from train import pretrain_gen, train_adv, train_dis, train_gap
 from data_loader import LoadData
 
@@ -42,12 +43,16 @@ GAP_W = [0.0, 0.5, 0.5]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
+PRI_LR = 0.01
 PRE_GEN_PATH = "../param/pre_generator.pkl"
 PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
+PRE_PRI_PATH = "../param/pre_privatizer.pkl"
+
 GEN_PATH = "../param/generator_v3.pkl"
 ADV_PATH = "../param/adversary_v3.pkl"
 DIS_PATH = "../param/discriminator_v3.pkl"
+PRI_PATH = "../param/privatizer_v3.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
@@ -68,6 +73,14 @@ gen_args = Gen_args(vocab_size=VOCAB_SIZE,
                     enc_dropout=0.5,
                     attn_dim=8,
                     dec_dropout=0.5)
+
+# Privatizer Parameters
+pri_args = Pri_args(vocab_size=VOCAB_SIZE, 
+                    emb_dim=64,
+                    enc_hid_dim=64,
+                    dec_hid_dim=64,
+                    enc_dropout=0.5)
+
 # Discriminator Parameters
 dis_args = Dis_args(num_classes=2, 
                     vocab_size=VOCAB_SIZE, 
@@ -90,10 +103,13 @@ adv_args = Dis_args(num_classes=3,
 generator = Generator(gen_args, USE_CUDA)
 discriminator = Discriminator(dis_args)
 adversary = Discriminator(adv_args)
+privatizer = Privatizer(Pri_args)
+
 if USE_CUDA:
     generator = generator.cuda()
     discriminator = discriminator.cuda()
     adversary = adversary.cuda()
+    privatizer = privatizer.cuda()
 
 # Enter training phase
 if args.phase == "pretrain_gen":
@@ -168,18 +184,21 @@ elif args.phase == "train_gap":
     dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
     adv_criterion = nn.NLLLoss(reduction='sum')
     adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
+    pri_criterion = nn.NLLLoss(reduction='sum')
+    pri_optimizer = optim.Adam(privatizer.parameters(), lr=PRI_LR)
     if USE_CUDA:
         gen_criterion = gen_criterion.cuda()
         dis_criterion = dis_criterion.cuda()
         adv_criterion = adv_criterion.cuda()
+        pri_criterion = pri_criterion.cuda()
     # Pretrain discriminator using CNN text classifier
-    train_gap(model=[generator, discriminator, adversary],
-              criterion=[gen_criterion, dis_criterion, adv_criterion],
-              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
+    train_gap(model=[generator, discriminator, adversary, privatizer],
+              criterion=[gen_criterion, dis_criterion, adv_criterion, pri_criterion],
+              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer, pri_optimizer],
               train_loader=train_loader,
               test_loader=test_loader,
               index_map=index_map,
-              PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
+              PATH=[GEN_PATH, DIS_PATH, ADV_PATH, PRI_PATH],
               USE_CUDA=USE_CUDA,
               EPOCH_NUM=GAP_EPOCH_NUM,
               MC_NUM=MC_NUM,
