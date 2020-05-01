@@ -137,14 +137,14 @@ class Generator(nn.Module):
             output = output.cuda()
         enc_out, hidden = self.encoder(input)
         noise_out, noise_hidden = privatizer.forward(enc_out)
-        distance = (hidden - noise_hidden).norm(p=2, dim=-1).sum() / batch_size + \
-                (enc_out - noise_out).norm(p=2, dim=-1).sum() / (batch_size * max_seq_len)
+        distance = (hidden - noise_hidden).norm(p=2, dim=-1).sum() / batch_size #+ \
+                # (enc_out - noise_out).norm(p=2, dim=-1).sum() / (batch_size * max_seq_len)
         outputs[:, 0] = torch.cat([torch.ones(batch_size,1), torch.zeros(batch_size, self.args.vocab_size - 1)], axis=1)
         # first input to the decoder is the <sos> token
         dec_hidden = noise_hidden
         enc_out_ = noise_out
         for t in range(1, max_seq_len):
-            output, dec_hidden = self.decoder(output, dec_hidden, enc_out_)
+            output, dec_hidden = self.decoder(output, dec_hidden, enc_out)
             outputs[:, t] = output
             top1 = output.max(1)[1]
             output = top1

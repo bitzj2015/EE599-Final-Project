@@ -39,11 +39,11 @@ PRE_ADV_EPOCH_NUM = 2
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.5, 0.5, 0.0]
-GEN_LR = 0.01
-ADV_LR = 0.01
-DIS_LR = 0.01
-PRI_LR = 0.01
+GAP_W = [0.1, 0.5, 0.5]
+GEN_LR = 0.03
+ADV_LR = 0.03
+DIS_LR = 0.03
+PRI_LR = 0.03
 PRE_GEN_PATH = "../param/pre_generator.pkl"
 PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
@@ -205,12 +205,14 @@ elif args.phase == "pretrain_dis":
 elif args.phase == "train_pri":
     # Load pretrained parameters
     try:
-        # privatizer.load_state_dict(torch.load(PRI_PATH))
+        privatizer.load_state_dict(torch.load(PRI_PATH))
         generator.load_state_dict(torch.load(PRE_GEN_PATH))
         discriminator.load_state_dict(torch.load(DIS_PATH))
         adversary.load_state_dict(torch.load(ADV_PATH))
     except:
         print("[Err] No pretrained model!")
+    for name, p in generator.named_parameters():
+        print("name")
     # Define optimizer and loss function for discriminator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)

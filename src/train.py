@@ -630,7 +630,7 @@ def train_pri(model,
                 print(param_group['lr'])
         torch.save(privatizer.state_dict(), PRI_PATH)
 
-        if (epoch + 1) % 5 == 0:
+        if (epoch + 1) % 50 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
                       privatizer=privatizer,
