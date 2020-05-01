@@ -16,7 +16,7 @@ import torch.optim as optim
 from generator_transformer import Generator, Gen_args
 from discriminator import Discriminator, Dis_args
 from privatizer import Privatizer, Pri_args
-from train import pretrain_gen, train_adv, train_dis, train_pri
+from train_transformer import pretrain_gen, train_adv, train_dis, train_gap
 from data_loader import LoadData
 
 # Set argument parser
@@ -39,20 +39,20 @@ PRE_ADV_EPOCH_NUM = 2
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.0, 0.5, 0.0]
+GAP_W = [0.0, 0.5, 0.5]
 GEN_LR = 0.003
 ADV_LR = 0.003
 DIS_LR = 0.003
 PRI_LR = 0.003
 PRE_GEN_PATH = "../param/pre_generator_trans.pkl"
-PRE_ADV_PATH = "../param/pre_adversary.pkl"
-PRE_DIS_PATH = "../param/pre_discriminator.pkl"
-PRE_PRI_PATH = "../param/pre_privatizer.pkl"
+PRE_ADV_PATH = "../param/pre_adversary_trans.pkl"
+PRE_DIS_PATH = "../param/pre_discriminator_trans.pkl"
+PRE_PRI_PATH = "../param/pre_privatizer_trans.pkl"
 
-GEN_PATH = "../param/generator_v4.pkl"
-ADV_PATH = "../param/adversary_v4.pkl"
-DIS_PATH = "../param/discriminator_v4.pkl"
-PRI_PATH = "../param/privatizer_v4.pkl"
+GEN_PATH = "../param/generator_trans.pkl"
+ADV_PATH = "../param/adversary_trans.pkl"
+DIS_PATH = "../param/discriminator_trans.pkl"
+PRI_PATH = "../param/privatizer_trans.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
@@ -178,44 +178,13 @@ elif args.phase == "pretrain_dis":
               EPOCH_NUM=PRE_DIS_EPOCH_NUM,
               PHASE="pretrain", 
               PLOT=False)
-# elif args.phase == "train_gap":
-#     # Load pretrained parameters
-#     try:
-#         generator.load_state_dict(torch.load(PRE_GEN_PATH))
-#         discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
-#         adversary.load_state_dict(torch.load(PRE_ADV_PATH))
-#     except:
-#         print("[Err] No pretrained model!")
-#     # Define optimizer and loss function for discriminator
-#     gen_criterion = nn.NLLLoss(reduction='sum')
-#     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
-#     dis_criterion = nn.NLLLoss(reduction='sum')
-#     dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
-#     adv_criterion = nn.NLLLoss(reduction='sum')
-#     adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
-#     if USE_CUDA:
-#         gen_criterion = gen_criterion.cuda()
-#         dis_criterion = dis_criterion.cuda()
-#         adv_criterion = adv_criterion.cuda()
-#     # Pretrain discriminator using CNN text classifier
-#     train_gap(model=[generator, discriminator, adversary],
-#               criterion=[gen_criterion, dis_criterion, adv_criterion],
-#               optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
-#               train_loader=train_loader,
-#               test_loader=test_loader,
-#               index_map=index_map,
-#               PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
-#               USE_CUDA=USE_CUDA,
-#               EPOCH_NUM=GAP_EPOCH_NUM,
-#               MC_NUM=MC_NUM,
-#               W=GAP_W)
-elif args.phase == "train_pri":
+
+elif args.phase == "train_gap":
     # Load pretrained parameters
     try:
-        privatizer.load_state_dict(torch.load(PRI_PATH))
-        # generator.load_state_dict(torch.load(PRE_GEN_PATH))
-        discriminator.load_state_dict(torch.load(DIS_PATH))
-        adversary.load_state_dict(torch.load(ADV_PATH))
+        generator.load_state_dict(torch.load(PRE_GEN_PATH))
+        discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
+        adversary.load_state_dict(torch.load(PRE_ADV_PATH))
     except:
         print("[Err] No pretrained model!")
     # for name, p in generator.named_parameters():
@@ -238,7 +207,8 @@ elif args.phase == "train_pri":
         adv_criterion = adv_criterion.cuda()
         pri_criterion = pri_criterion.cuda()
     # Pretrain discriminator using CNN text classifier
-    train_pri(model=[generator, discriminator, adversary, privatizer],
+    print("Starting")
+    train_gap(model=[generator, discriminator, adversary, privatizer],
               criterion=[gen_criterion, dis_criterion, adv_criterion, pri_criterion],
               optimizer=[gen_optimizer, dis_optimizer, adv_optimizer, pri_optimizer],
               train_loader=train_loader,
