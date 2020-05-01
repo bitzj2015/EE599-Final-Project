@@ -39,7 +39,7 @@ PRE_ADV_EPOCH_NUM = 2
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.1, 0.5, 0.5]
+GAP_W = [0.0, 0.0, 0.5]
 GEN_LR = 0.03
 ADV_LR = 0.03
 DIS_LR = 0.03
@@ -212,7 +212,10 @@ elif args.phase == "train_pri":
     except:
         print("[Err] No pretrained model!")
     for name, p in generator.named_parameters():
-        print("name")
+        if "attn" not in name:
+            p.requires_grad = False
+        else:
+            print(name, p.requires_grad)
     # Define optimizer and loss function for discriminator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)

@@ -606,9 +606,9 @@ def train_pri(model,
             pri_adv_loss = -adv_criterion(adv_pred, category) / batch_size
             pri_sim_loss = distance
             pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
-            pri_optimizer.zero_grad()
+            gen_optimizer.zero_grad()
             pri_loss.backward()
-            pri_optimizer.step()
+            gen_optimizer.step()
 
             total_pri_loss += pri_loss.item()
             total_pri_sim_loss += pri_sim_loss.item()
@@ -628,7 +628,7 @@ def train_pri(model,
             for param_group in pri_optimizer.param_groups:
                 param_group['lr'] *= 0.98
                 print(param_group['lr'])
-        torch.save(privatizer.state_dict(), PRI_PATH)
+        torch.save(generator.state_dict(), GEN_PATH)
 
         if (epoch + 1) % 50 == 0:
             train_dis(discriminator=discriminator, 
