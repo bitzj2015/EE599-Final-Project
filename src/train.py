@@ -625,8 +625,8 @@ def train_pri(model,
         csvFile.close()
 
         if epoch > 0:
-            for param_group in pri_optimizer.param_groups:
-                param_group['lr'] *= 0.98
+            for param_group in gen_optimizer.param_groups:
+                param_group['lr'] *= 0.99
                 print(param_group['lr'])
         torch.save(generator.state_dict(), GEN_PATH)
 

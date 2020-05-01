@@ -39,12 +39,12 @@ PRE_ADV_EPOCH_NUM = 2
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.0, 0.0, 0.5]
-GEN_LR = 0.03
-ADV_LR = 0.03
-DIS_LR = 0.03
-PRI_LR = 0.03
-PRE_GEN_PATH = "../param/pre_generator.pkl"
+GAP_W = [0.0, 0.5, 0.0]
+GEN_LR = 0.003
+ADV_LR = 0.003
+DIS_LR = 0.003
+PRI_LR = 0.003
+PRE_GEN_PATH = "../param/pre_generator_v3.pkl"
 PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
 PRE_PRI_PATH = "../param/pre_privatizer.pkl"
@@ -56,8 +56,8 @@ PRI_PATH = "../param/privatizer_v4.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
-    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v2.json", 
-                                                  word2id_path="../data/word_map_v2.json", 
+    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v3.json", 
+                                                  word2id_path="../data/word_map_v3.json", 
                                                   train_split=0.8,
                                                   BATCH_SIZE=64)
 
@@ -113,7 +113,7 @@ if USE_CUDA:
 
 # Enter training phase
 if args.phase == "pretrain_gen":
-    # generator.load_state_dict(torch.load(PRE_GEN_PATH))
+    generator.load_state_dict(torch.load(PRE_GEN_PATH))
     # Define optimizer and loss function for generator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
@@ -206,16 +206,16 @@ elif args.phase == "train_pri":
     # Load pretrained parameters
     try:
         privatizer.load_state_dict(torch.load(PRI_PATH))
-        generator.load_state_dict(torch.load(PRE_GEN_PATH))
+        # generator.load_state_dict(torch.load(PRE_GEN_PATH))
         discriminator.load_state_dict(torch.load(DIS_PATH))
         adversary.load_state_dict(torch.load(ADV_PATH))
     except:
         print("[Err] No pretrained model!")
-    for name, p in generator.named_parameters():
-        if "attn" not in name:
-            p.requires_grad = False
-        else:
-            print(name, p.requires_grad)
+    # for name, p in generator.named_parameters():
+    #     if "enc" in name or "emb" in name:
+    #         p.requires_grad = False
+    #     else:
+    #         print(name, p.requires_grad)
     # Define optimizer and loss function for discriminator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
