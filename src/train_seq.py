@@ -423,8 +423,29 @@ def train_gap(model,
     csvFile.close()
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
-        dis_reward_bias = 0
-        adv_reward_bias = 0
+        if epoch % 5 == 0:
+            train_dis(discriminator=discriminator, 
+                      generator=generator,
+                      train_loader=train_loader,
+                      test_loader=test_loader,
+                      dis_criterion=dis_criterion,
+                      dis_optimizer=dis_optimizer,
+                      DIS_PATH=DIS_PATH,
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=2,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=False)
+            train_adv(adversary=adversary, 
+                      generator=generator,
+                      train_loader=train_loader, 
+                      test_loader=test_loader, 
+                      adv_criterion=adv_criterion,
+                      adv_optimizer=adv_optimizer, 
+                      ADV_PATH=ADV_PATH, 
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=2,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=True)
         step = 0
         total_gen_loss = 0
         total_gen_mle_loss = 0
@@ -489,29 +510,6 @@ def train_gap(model,
                 print(param_group['lr'])
         torch.save(generator.state_dict(), GEN_PATH)
 
-        if (epoch + 1) % 5 == 0:
-            train_dis(discriminator=discriminator, 
-                      generator=generator,
-                      train_loader=train_loader,
-                      test_loader=test_loader,
-                      dis_criterion=dis_criterion,
-                      dis_optimizer=dis_optimizer,
-                      DIS_PATH=DIS_PATH,
-                      USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=2,
-                      PHASE="train_ep_"+str(epoch), 
-                      PLOT=False)
-            train_adv(adversary=adversary, 
-                      generator=generator,
-                      train_loader=train_loader, 
-                      test_loader=test_loader, 
-                      adv_criterion=adv_criterion,
-                      adv_optimizer=adv_optimizer, 
-                      ADV_PATH=ADV_PATH, 
-                      USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=2,
-                      PHASE="train_ep_"+str(epoch), 
-                      PLOT=True)
 
 '''
 Define training privatizer
