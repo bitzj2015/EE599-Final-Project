@@ -57,7 +57,6 @@ class Generator(nn.Module):
         pred = F.log_softmax(output, dim=2)
         batch_size = pred.size(0)
         seq_len = pred.size(1)
-        print(pred.size())
         mask = input[:,:,1].float()
         padding = torch.cat([torch.zeros(batch_size, seq_len, self.args.vocab_size - 1), \
                              torch.ones(batch_size, seq_len, 1)], axis=2)
