@@ -485,7 +485,7 @@ def train_gap(model,
                             total_gen_adv_loss/step, total_dis_acc/step, total_adv_acc/step))
         if epoch > 0:
             for param_group in gen_optimizer.param_groups:
-                param_group['lr'] *= 0.99
+                param_group['lr'] *= 0.98
                 print(param_group['lr'])
         torch.save(generator.state_dict(), GEN_PATH)
 
