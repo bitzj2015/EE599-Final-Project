@@ -166,7 +166,7 @@ def train_adv_epoch(model,
             samples = torch.stack([pred_, data[:,:,1]], axis=2)
         else:
             samples = data
-        pred, _ = model.forward(samples)
+        pred, _, _ = model.forward(samples)
         loss = criterion(pred, target)
         total_loss += loss.item()
         total_words += data.size(0) * data.size(1)
@@ -202,7 +202,7 @@ def test_adv_epoch(model,
         else:
             samples = data
         with torch.no_grad():
-            pred, _ = model.forward(samples)
+            pred, _, _ = model.forward(samples)
             loss = criterion(pred, target)
             total_loss += loss.item()
             total_words += data.size(0) * data.size(1)
@@ -227,6 +227,10 @@ def train_adv(adversary,
     test_loss_list = []
     train_acc_list = []
     test_acc_list = []
+    csvFile = open("../param/pretrain_adversary.csv", 'a', newline='')
+    writer = csv.writer(csvFile)
+    writer.writerow(["epoch", "train_loss", "test_loss", "train_acc", "test_acc"])
+    csvFile.close()
     for epoch in range(EPOCH_NUM):
         print('[INFO] Start epoch [%d] ...'% (epoch))
         train_loss, train_acc = train_adv_epoch(adversary,
@@ -247,6 +251,10 @@ def train_adv(adversary,
                       loss (train, test): (%.4f, %.4f), \
                       accuracy (train, test): (%.4f, %.4f)'% \
                       (epoch, train_loss, test_loss, train_acc, test_acc))
+        csvFile = open("../param/pretrain_adversary.csv", 'a', newline='')
+        writer = csv.writer(csvFile)
+        writer.writerow([epoch, train_loss, test_loss, train_acc, test_acc])
+        csvFile.close()
         train_loss_list.append(train_loss)
         test_loss_list.append(test_loss)
         train_acc_list.append(train_acc)

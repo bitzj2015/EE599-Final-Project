@@ -34,9 +34,9 @@ class Rollout(object):
         batch_size = x_gen.size(0)
         seq_len = x_gen.size(1)
 
-        @ray.remote
+        @ray.remote(num_gpus=1)
         def MonteCarlo(i, batch_size, model, x_gen, target, category, discriminator, adversary, index_map):
-            print("[INFO] Process: {}".format(i))
+            # print("[INFO] Process: {}".format(i))
             total_acc = 0.0
             sim_rewards = []
             dis_rewards = []

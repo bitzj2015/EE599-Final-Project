@@ -411,132 +411,132 @@ def test_dis(discriminator,
                     (test_loss, test_acc))
     return test_loss, test_acc
 
-# '''
-# Define training gap
-# '''
-# def train_gap(model,
-#               criterion,
-#               optimizer,
-#               train_loader,
-#               test_loader,
-#               index_map,
-#               PATH,
-#               USE_CUDA,
-#               EPOCH_NUM,
-#               MC_NUM=16,
-#               W=[0.2,0.2,0.6]):
-#     generator, discriminator, adversary = model
-#     gen_criterion, dis_criterion, adv_criterion = criterion
-#     gen_optimizer, dis_optimizer, adv_optimizer = optimizer
-#     GEN_PATH, DIS_PATH, ADV_PATH = PATH
+'''
+Define training gap
+'''
+def train_gap(model,
+              criterion,
+              optimizer,
+              train_loader,
+              test_loader,
+              index_map,
+              PATH,
+              USE_CUDA,
+              EPOCH_NUM,
+              MC_NUM=16,
+              W=[0.2,0.2,0.6]):
+    generator, discriminator, adversary = model
+    gen_criterion, dis_criterion, adv_criterion = criterion
+    gen_optimizer, dis_optimizer, adv_optimizer = optimizer
+    GEN_PATH, DIS_PATH, ADV_PATH = PATH
 
-#     # Adversarial Training
-#     rollout = Rollout(generator, 0.8, index_map)
+    # Adversarial Training
+    rollout = Rollout(generator, 0.8, index_map)
 
-#     print("[INFO] Start training GAP ...")
-#     gen_sim_loss = GANLoss()
-#     gen_dis_loss = GANLoss()
-#     gen_adv_loss = GANLoss()
-#     W = torch.Tensor(W)
-#     if USE_CUDA:
-#         gen_sim_loss = gen_sim_loss.cuda()
-#         gen_dis_loss = gen_dis_loss.cuda()
-#         gen_adv_loss = gen_adv_loss.cuda()
-#         W = W.cuda()
-#     csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
-#     writer = csv.writer(csvFile)
-#     writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "sim_reward", "dis_reward", "adv_reward", "dis_reward_bias", "adv_reward_bias"])
-#     csvFile.close()
-#     for epoch in range(EPOCH_NUM):
-#         ## Train the generator for one step
-#         dis_reward_bias = 0
-#         adv_reward_bias = 0
-#         step = 0
-#         for batch in tqdm(test_loader): 
-#             step += 1  
-#             data, category = batch['x'], batch['u'].squeeze()
-#             batch_size = data.size(0)
-#             target = data
-#             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
-#             samples_ = torch.stack([samples, target[:,:,1]], axis=2)
-#             dis_pred = discriminator(samples_).detach()
-#             dis_pred = torch.exp(dis_pred)[:,1]
-#             dis_reward_bias += dis_pred.data.cpu().numpy().sum() / batch_size
-#             adv_pred = adversary(samples_).detach()
-#             adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
-#             adv_pred = 1 - adv_pred    
-#             adv_reward_bias += adv_pred.data.cpu().numpy().sum() / batch_size
-#         dis_reward_bias /= step
-#         adv_reward_bias /= step
-#         print("[INFO] Epoch: {}, Bias: ({}, {})".format(epoch, dis_reward_bias, adv_reward_bias)) 
-#         step = 0
-#         for batch in tqdm(train_loader):
-#             step += 1
-#             data, category = batch['x'], batch['u'].squeeze()
-#             target = data
-#             if USE_CUDA:
-#                 data, category, target = data.cuda(), category.cuda(), target.cuda()
-#             batch_size = data.size(0)
-#             print("Sampling ... ")
-#             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
-#             # calculate the reward
-#             sim_rewards, dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
-#             dis_R = np.clip(np.mean(dis_rewards[:, -1].data.cpu().numpy() - 0 * dis_reward_bias), 0, 1)
-#             adv_R = np.clip(np.mean(adv_rewards[:, -1].data.cpu().numpy() - 0 * adv_reward_bias), 0, 1)
-#             sim_R = np.mean(sim_rewards[:, -1].data.cpu().numpy())
-#             sim_rewards = sim_rewards.contiguous().view(-1)
-#             dis_rewards = torch.clamp(dis_rewards.contiguous().view(-1) - 0 * dis_reward_bias, 0, 1)
-#             adv_rewards = torch.clamp(adv_rewards.contiguous().view(-1) - 0 * adv_reward_bias, 0, 1)
-#             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
-#             if USE_CUDA:
-#                 sim_rewards = sim_rewards.cuda()
-#                 dis_rewards = dis_rewards.cuda()
-#                 adv_rewards = adv_rewards.cuda()
-#             sim_loss = gen_sim_loss(pred, target[:,:,0].contiguous().view(-1), sim_rewards)
-#             dis_loss = gen_dis_loss(pred, target[:,:,0].contiguous().view(-1), dis_rewards)
-#             adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
-#             # mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
-#             gen_gap_loss = W[0] * sim_loss + W[1] * dis_loss + W[2] * adv_loss
-#             print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, \
-#                 sim_reward: {}, dis_reward: {}, adv_reward: {}, dis_r_bias: {}, adv_r_bias: {}".\
-#                     format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, \
-#                         sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias))
-#             csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
-#             writer = csv.writer(csvFile)
-#             writer.writerow([epoch, step, sim_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
-#                              adv_loss.data.cpu().numpy(), sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias])
-#             csvFile.close()
-#             gen_optimizer.zero_grad()
-#             gen_gap_loss.backward()
-#             gen_optimizer.step()
-#             rollout.update_params()
-#         torch.save(generator.state_dict(), GEN_PATH)
+    print("[INFO] Start training GAP ...")
+    gen_sim_loss = GANLoss()
+    gen_dis_loss = GANLoss()
+    gen_adv_loss = GANLoss()
+    W = torch.Tensor(W)
+    if USE_CUDA:
+        gen_sim_loss = gen_sim_loss.cuda()
+        gen_dis_loss = gen_dis_loss.cuda()
+        gen_adv_loss = gen_adv_loss.cuda()
+        W = W.cuda()
+    csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+    writer = csv.writer(csvFile)
+    writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "sim_reward", "dis_reward", "adv_reward", "dis_reward_bias", "adv_reward_bias"])
+    csvFile.close()
+    for epoch in range(EPOCH_NUM):
+        ## Train the generator for one step
+        dis_reward_bias = 0
+        adv_reward_bias = 0
+        step = 0
+        for batch in tqdm(test_loader): 
+            step += 1  
+            data, category = batch['x'], batch['u'].squeeze()
+            batch_size = data.size(0)
+            target = data
+            samples, pred = generator.sample(batch_size, x_gen=None, target=target)
+            samples_ = torch.stack([samples, target[:,:,1]], axis=2)
+            dis_pred = discriminator(samples_).detach()
+            dis_pred = torch.exp(dis_pred)[:,1]
+            dis_reward_bias += dis_pred.data.cpu().numpy().sum() / batch_size
+            adv_pred = adversary(samples_).detach()
+            adv_pred = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1))
+            adv_pred = 1 - adv_pred    
+            adv_reward_bias += adv_pred.data.cpu().numpy().sum() / batch_size
+        dis_reward_bias /= step
+        adv_reward_bias /= step
+        print("[INFO] Epoch: {}, Bias: ({}, {})".format(epoch, dis_reward_bias, adv_reward_bias)) 
+        step = 0
+        for batch in tqdm(train_loader):
+            step += 1
+            data, category = batch['x'], batch['u'].squeeze()
+            target = data
+            if USE_CUDA:
+                data, category, target = data.cuda(), category.cuda(), target.cuda()
+            batch_size = data.size(0)
+            print("Sampling ... ")
+            samples, pred = generator.sample(batch_size, x_gen=None, target=target)
+            # calculate the reward
+            sim_rewards, dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
+            dis_R = np.clip(np.mean(dis_rewards[:, -1].data.cpu().numpy() - 0 * dis_reward_bias), 0, 1)
+            adv_R = np.clip(np.mean(adv_rewards[:, -1].data.cpu().numpy() - 0 * adv_reward_bias), 0, 1)
+            sim_R = np.mean(sim_rewards[:, -1].data.cpu().numpy())
+            sim_rewards = sim_rewards.contiguous().view(-1)
+            dis_rewards = torch.clamp(dis_rewards.contiguous().view(-1) - 0 * dis_reward_bias, 0, 1)
+            adv_rewards = torch.clamp(adv_rewards.contiguous().view(-1) - 0 * adv_reward_bias, 0, 1)
+            # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
+            if USE_CUDA:
+                sim_rewards = sim_rewards.cuda()
+                dis_rewards = dis_rewards.cuda()
+                adv_rewards = adv_rewards.cuda()
+            sim_loss = gen_sim_loss(pred, target[:,:,0].contiguous().view(-1), sim_rewards)
+            dis_loss = gen_dis_loss(pred, target[:,:,0].contiguous().view(-1), dis_rewards)
+            adv_loss = gen_adv_loss(pred, target[:,:,0].contiguous().view(-1), adv_rewards)
+            # mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
+            gen_gap_loss = W[0] * sim_loss + W[1] * dis_loss + W[2] * adv_loss
+            print("[INFO] Epoch: {}, step: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, \
+                sim_reward: {}, dis_reward: {}, adv_reward: {}, dis_r_bias: {}, adv_r_bias: {}".\
+                    format(epoch, step, gen_gap_loss.data, sim_loss.data, dis_loss.data, adv_loss.data, \
+                        sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias))
+            csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+            writer = csv.writer(csvFile)
+            writer.writerow([epoch, step, sim_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
+                             adv_loss.data.cpu().numpy(), sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias])
+            csvFile.close()
+            gen_optimizer.zero_grad()
+            gen_gap_loss.backward()
+            gen_optimizer.step()
+            rollout.update_params()
+        torch.save(generator.state_dict(), GEN_PATH)
 
-#         if (epoch + 1) % 2 == 0:
-#             train_dis(discriminator=discriminator, 
-#                       generator=generator,
-#                       privatizer=None,
-#                       train_loader=train_loader,
-#                       test_loader=test_loader,
-#                       dis_criterion=dis_criterion,
-#                       dis_optimizer=dis_optimizer,
-#                       DIS_PATH=DIS_PATH,
-#                       USE_CUDA=USE_CUDA, 
-#                       EPOCH_NUM=5,
-#                       PHASE="train_ep_"+str(epoch), 
-#                       PLOT=False)
-#             train_adv(adversary=adversary, 
-#                       generator=generator,
-#                       privatizer=None,
-#                       train_loader=train_loader, 
-#                       test_loader=test_loader, 
-#                       adv_criterion=adv_criterion,
-#                       adv_optimizer=adv_optimizer, 
-#                       ADV_PATH=ADV_PATH, 
-#                       USE_CUDA=USE_CUDA, 
-#                       EPOCH_NUM=5,
-#                       PHASE="train_ep_"+str(epoch), 
-#                       PLOT=True)
+        if (epoch + 1) % 2 == 0:
+            train_dis(discriminator=discriminator, 
+                      generator=generator,
+                      privatizer=None,
+                      train_loader=train_loader,
+                      test_loader=test_loader,
+                      dis_criterion=dis_criterion,
+                      dis_optimizer=dis_optimizer,
+                      DIS_PATH=DIS_PATH,
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=5,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=False)
+            train_adv(adversary=adversary, 
+                      generator=generator,
+                      privatizer=None,
+                      train_loader=train_loader, 
+                      test_loader=test_loader, 
+                      adv_criterion=adv_criterion,
+                      adv_optimizer=adv_optimizer, 
+                      ADV_PATH=ADV_PATH, 
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=5,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=True)
 
 
 '''

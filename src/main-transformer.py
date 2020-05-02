@@ -34,24 +34,22 @@ np.random.seed(SEED)
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 50
-PRE_ADV_EPOCH_NUM = 2
+PRE_ADV_EPOCH_NUM = 20
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
 GAP_W = [0.0, 0.5, 0.5]
-GEN_LR = 0.003
-ADV_LR = 0.003
-DIS_LR = 0.003
-PRI_LR = 0.003
+GEN_LR = 0.001
+ADV_LR = 0.0003
+DIS_LR = 0.001
+
 PRE_GEN_PATH = "../param/pre_generator_trans.pkl"
 PRE_ADV_PATH = "../param/pre_adversary_trans.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator_trans.pkl"
-PRE_PRI_PATH = "../param/pre_privatizer_trans.pkl"
 
 GEN_PATH = "../param/generator_trans.pkl"
 ADV_PATH = "../param/adversary_trans.pkl"
 DIS_PATH = "../param/discriminator_trans.pkl"
-PRI_PATH = "../param/privatizer_trans.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
@@ -83,11 +81,11 @@ dis_args = Dis_args(vocab_size=VOCAB_SIZE,
 
 # Adversarial Parameters
 adv_args = Dis_args(vocab_size=VOCAB_SIZE, 
-                    emb_dim=200,
-                    num_head=2,
-                    hid_dim=200,
-                    num_enc_l=2,
-                    num_dec_l=2,
+                    emb_dim=64,
+                    num_head=8,
+                    hid_dim=64,
+                    num_enc_l=8,
+                    num_dec_l=8,
                     dropout=0.5,
                     out_dim=3)
 

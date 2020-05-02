@@ -122,7 +122,7 @@ class TransformerModel(nn.Module):
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self, src, has_mask=True, USE_CUDA=False):
+    def forward(self, src, has_mask=True, USE_CUDA=True):
 
         if self.src_mask is None or self.src_mask.size(0) != len(src):
             device = src.device

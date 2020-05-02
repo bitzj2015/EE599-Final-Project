@@ -25,6 +25,7 @@ class Generator(nn.Module):
         self.use_cuda = use_cuda
         self.emb = nn.Embedding(self.args.vocab_size, self.args.emb_dim)
         self.lstm = nn.LSTM(self.args.emb_dim, self.args.hidden_dim, batch_first=True)
+        
         self.fc = nn.Linear(self.args.hidden_dim, self.args.vocab_size)
         self.apply(weights_init)
 
@@ -37,6 +38,7 @@ class Generator(nn.Module):
         mask = input[:,:,1].float()
         emb = self.emb(x) * mask.unsqueeze(2)
         h0, c0 = self.init_hidden(x.size(0))
+        self.lstm.flatten_parameters()
         output, (h, c) = self.lstm(emb, (h0, c0))
         pred = F.log_softmax(self.fc(output.contiguous().view(-1, self.args.hidden_dim)), dim=1)
         return pred
