@@ -11,11 +11,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from utils import GANLoss
+
 
 # Load self-defined module
 from generator_seq import Generator, Gen_args
 from discriminator_seq import Discriminator, Dis_args
-from train_seq import pretrain_gen, train_adv, train_dis, train_pri, train_gap
+from train_seq import test_adv_epoch
 from data_loader import LoadData
 
 # Set random seed
@@ -31,7 +33,7 @@ PRE_ADV_EPOCH_NUM = 10
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 100
 MC_NUM = 16
-GAP_W = [0.01, 0.2, 0.8]
+W = [0.04, 0.5, 0.5]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -93,30 +95,77 @@ if USE_CUDA:
 
 # Enter training phase
 generator.load_state_dict(torch.load(GEN_PATH))
+discriminator.load_state_dict(torch.load(DIS_PATH))
+adversary.load_state_dict(torch.load(ADV_PATH))
 gen_criterion = nn.NLLLoss(reduction='sum')
 
-model = generator
-criterion = gen_criterion
-total_loss = 0.
-total_words = 0.
-for batch in tqdm(test_loader):
-    data = batch["x"]
-    target = batch["x"][:,:,0]
+step = 0
+total_gen_loss = 0
+total_gen_mle_loss = 0
+total_gen_dis_loss = 0
+total_gen_adv_loss = 0
+total_dis_acc = 0
+total_adv_acc = 0
+
+gen_sim_loss = GANLoss()
+gen_dis_loss = GANLoss()
+gen_adv_loss = GANLoss()
+W = torch.Tensor(W)
+if USE_CUDA:
+    gen_sim_loss = gen_sim_loss.cuda()
+    gen_dis_loss = gen_dis_loss.cuda()
+    gen_adv_loss = gen_adv_loss.cuda()
+    W = W.cuda()
+
+for batch in tqdm(test_loader): 
+    step += 1
+    data, category = batch['x'], batch['u'].squeeze()
+    batch_size = data.size(0)
+    seq_len = data.size(1)
+    dis_pred_label = torch.ones((batch_size)).long()
     if USE_CUDA:
-        data, target = data.cuda(), target.cuda()
-    target = target.contiguous().view(-1)
+        data, category, dis_pred_label = \
+        data.cuda(), category.cuda(), dis_pred_label.cuda()
+
     with torch.no_grad():
-        pred = model.forward(data)
-        loss = criterion(pred, target)
-        total_loss += loss.item()
-        total_words += data.size(0) * data.size(1)
-target_ = target.detach().cpu().numpy()
-_, pred_ = torch.max(pred, axis=-1)
-pred_ = pred_.cpu().numpy()
-target_query = []
-pred_query = []
-for i in range(MAX_SEQ_LEN * 10):
-    target_query.append(index_map[target_[i]])
-    pred_query.append(index_map[pred_[i]])
-print("[INFO] Target query: ", target_query)
-print("[INFO] Predicted query: ", pred_query)
+        output = generator.forward(input=data)
+        _, pred_ = torch.max(output, axis=-1)
+        samples = pred_.view(batch_size, -1)
+        samples_ = torch.stack([samples, data[:,:,1]], axis=2)
+        dis_pred, dis_out = discriminator(samples_)
+        adv_pred, adv_out = adversary(samples_)
+        dis_acc = torch.exp(dis_out)[:,1].sum() / batch_size
+        adv_acc = 1 - torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
+        dis_r = torch.exp(dis_pred)[:,:,1]
+        category = category.view(batch_size,1).unsqueeze(1).repeat(1, seq_len, 1)
+        adv_r = 1 - torch.exp(torch.gather(adv_pred, 2, category))
+        
+        dis_loss = gen_dis_loss(output, samples.contiguous().view(-1), dis_r.contiguous().view(-1))
+        adv_loss = gen_adv_loss(output, samples.contiguous().view(-1), adv_r.contiguous().view(-1))
+        mle_loss = gen_criterion(output, data[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
+        gen_loss = W[0] * mle_loss + W[1] * dis_loss + W[2] * adv_loss
+
+    total_gen_loss += gen_loss.item()
+    total_gen_mle_loss += mle_loss.item()
+    total_gen_dis_loss += dis_loss.item()
+    total_gen_adv_loss += adv_loss.item()
+    total_dis_acc += dis_acc.data.cpu().numpy()
+    total_adv_acc += adv_acc.data.cpu().numpy()
+
+
+
+print("[INFO] Loss: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, \
+    dis_R: {}, adv_R: {}".\
+        format(total_gen_loss/step, total_gen_mle_loss/step, total_gen_dis_loss/step, \
+            total_gen_adv_loss/step, total_dis_acc/step, total_adv_acc/step))
+
+orig = data[:,:,0].detach().cpu().numpy()
+obfu = samples.detach().cpu().numpy()
+for i in range(batch_size):
+    target_query = []
+    pred_query = []
+    for j in range(MAX_SEQ_LEN):
+        target_query.append(index_map[orig[i][j]])
+        pred_query.append(index_map[obfu[i][j]])
+    print("[INFO] Target query: ", target_query)
+    print("[INFO] Predicted query: ", pred_query)
