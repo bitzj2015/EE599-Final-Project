@@ -330,7 +330,6 @@ def train_dis(discriminator,
                       (epoch, total_loss, total_acc))
     test_loss, test_acc = test_dis(discriminator, 
                                    generator,
-                                   privatizer,
                                    test_loader,
                                    dis_criterion,
                                    dis_optimizer,
@@ -419,8 +418,8 @@ def train_gap(model,
         W = W.cuda()
     csvFile = open("../param/train_gap_seq_loss.csv", 'a', newline='')
     writer = csv.writer(csvFile)
-    writer.writerow(["epoch", "step", "pri_loss", "pri_sim_loss", \
-                     "pri_dis_loss", "pri_adv_loss", "dis_acc", "adv_acc"])
+    writer.writerow(["epoch", "step", "gen_loss", "gen_mle_loss", \
+                     "gen_dis_loss", "gen_adv_loss", "dis_reward", "adv_reward"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
         ## Train the generator for one step
@@ -428,7 +427,7 @@ def train_gap(model,
         adv_reward_bias = 0
         step = 0
         total_gen_loss = 0
-        total_gen_sim_loss = 0
+        total_gen_mle_loss = 0
         total_gen_dis_loss = 0
         total_gen_adv_loss = 0
         total_dis_acc = 0
@@ -452,7 +451,7 @@ def train_gap(model,
             dis_acc = torch.exp(dis_out)[:,1].sum() / batch_size
             adv_acc = 1 - torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
             dis_r = torch.exp(dis_pred)[:,:,1]
-            category = category.unsqueeze(1).repeat(1, seq_len, 1)
+            category = category.view(batch_size,1).unsqueeze(1).repeat(1, seq_len, 1)
             adv_r = 1 - torch.exp(torch.gather(adv_pred, 2, category))
             
             dis_loss = gen_dis_loss(output, samples.contiguous().view(-1), dis_r.contiguous().view(-1))
@@ -473,16 +472,17 @@ def train_gap(model,
             total_dis_acc += dis_acc.data.cpu().numpy()
             total_adv_acc += adv_acc.data.cpu().numpy()
 
-        csvFile = open("../param/train_gap_seq_loss.csv", 'a', newline='')
-        writer = csv.writer(csvFile)
-        writer.writerow([epoch, total_gen_loss / step, total_gen_mle_loss / step, \
-                            total_gen_dis_loss / step, total_gen_adv_loss / step, \
-                            total_dis_acc / step, total_adv_acc / step])
-        csvFile.close()
-        print("[INFO] Epoch: {}, loss: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, \
-            dis_R: {}, adv_R: {}".\
-                format(epoch, total_gen_loss, total_gen_mle_loss, total_gen_dis_loss, total_gen_adv_loss.data, \
-                    total_dis_acc, total_adv_acc))
+            if step % 10 == 0:
+                csvFile = open("../param/train_gap_seq_loss.csv", 'a', newline='')
+                writer = csv.writer(csvFile)
+                writer.writerow([epoch, step, total_gen_loss / step, total_gen_mle_loss / step, \
+                                    total_gen_dis_loss / step, total_gen_adv_loss / step, \
+                                    total_dis_acc / step, total_adv_acc / step])
+                csvFile.close()
+                print("[INFO] Epoch: {}, step: {}, loss: {}, mle_loss: {}, dis_loss: {}, adv_loss: {}, \
+                    dis_R: {}, adv_R: {}".\
+                        format(epoch, step, total_gen_loss/step, total_gen_mle_loss/step, total_gen_dis_loss/step, \
+                            total_gen_adv_loss/step, total_dis_acc/step, total_adv_acc/step))
         if epoch > 0:
             for param_group in gen_optimizer.param_groups:
                 param_group['lr'] *= 0.99
@@ -604,7 +604,7 @@ def train_pri(model,
                 print(param_group['lr'])
         torch.save(generator.state_dict(), GEN_PATH)
 
-        if (epoch + 1) % 50 == 0:
+        if (epoch + 1) % 5 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
                       privatizer=privatizer,

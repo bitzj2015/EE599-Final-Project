@@ -33,7 +33,7 @@ np.random.seed(SEED)
 # Basic Training Paramters
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
-PRE_GEN_EPOCH_NUM = 10
+PRE_GEN_EPOCH_NUM = 20
 PRE_ADV_EPOCH_NUM = 10
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
