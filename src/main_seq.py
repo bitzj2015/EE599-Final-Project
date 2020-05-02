@@ -23,6 +23,10 @@ parser = argparse.ArgumentParser(description='Training Parameter')
 parser.add_argument('--cuda', action='store', type=int, default=0)
 parser.add_argument('--batch_size', help="batch size during training", type=int, default=64)
 parser.add_argument('--phase', help="batch size during training", type=str, default="pretrain_G")
+parser.add_argument('--w0', help='w0', type=float, default=0.3)
+parser.add_argument('--w1', help='w1', type=float, default=0.3)
+parser.add_argument('--w2', help='w2', type=float, default=0.3)
+parser.add_argument('--v', help='version', type=str, default="0")
 args = parser.parse_args()
 
 # Set random seed
@@ -38,7 +42,7 @@ PRE_ADV_EPOCH_NUM = 10
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
-GAP_W = [0.01, 0.5, 0.5]
+GAP_W = [args.w0, args.w1, args.w2]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
@@ -47,9 +51,9 @@ PRE_GEN_PATH = "../param/pre_generator_v2.pkl"
 PRE_ADV_PATH = "../param/pre_adversary_v2.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator_v2.pkl"
 
-GEN_PATH = "../param/generator_v2.pkl"
-ADV_PATH = "../param/adversary_v2.pkl"
-DIS_PATH = "../param/discriminator_v2.pkl"
+GEN_PATH = "../param/generator_v2" + args.v + ".pkl"
+ADV_PATH = "../param/adversary_v2" + args.v + ".pkl"
+DIS_PATH = "../param/discriminator_v2" + args.v + ".pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
