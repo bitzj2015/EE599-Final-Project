@@ -467,12 +467,12 @@ def train_gap(model,
             samples, pred = generator.sample(batch_size, x_gen=None, target=target)
             # calculate the reward
             sim_rewards, dis_rewards, adv_rewards = rollout.get_reward(samples, target, category, MC_NUM, discriminator, adversary)
-            dis_R = np.clip(np.mean(dis_rewards[:, -1].data.cpu().numpy() - 1 * dis_reward_bias), 0, 1)
-            adv_R = np.clip(np.mean(adv_rewards[:, -1].data.cpu().numpy() - 1 * adv_reward_bias), 0, 1)
+            dis_R = np.clip(np.mean(dis_rewards[:, -1].data.cpu().numpy() - 0 * dis_reward_bias), 0, 1)
+            adv_R = np.clip(np.mean(adv_rewards[:, -1].data.cpu().numpy() - 0 * adv_reward_bias), 0, 1)
             sim_R = np.mean(sim_rewards[:, -1].data.cpu().numpy())
             sim_rewards = sim_rewards.contiguous().view(-1)
-            dis_rewards = torch.clamp(dis_rewards.contiguous().view(-1) - 1 * dis_reward_bias, 0, 1)
-            adv_rewards = torch.clamp(adv_rewards.contiguous().view(-1) - 1 * adv_reward_bias, 0, 1)
+            dis_rewards = torch.clamp(dis_rewards.contiguous().view(-1) - 0 * dis_reward_bias, 0, 1)
+            adv_rewards = torch.clamp(adv_rewards.contiguous().view(-1) - 0 * adv_reward_bias, 0, 1)
             # print(np.shape(dis_rewards), np.shape(adv_rewards), np.shape(pred))
             if USE_CUDA:
                 sim_rewards = sim_rewards.cuda()
