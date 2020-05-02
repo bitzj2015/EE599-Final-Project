@@ -614,7 +614,7 @@ def train_pri(model,
                 print(param_group['lr'])
         torch.save(generator.state_dict(), GEN_PATH)
 
-        if (epoch + 1) % 50 == 0:
+        if (epoch + 1) % 5 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
                       privatizer=privatizer,

@@ -34,15 +34,15 @@ np.random.seed(SEED)
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 50
-PRE_ADV_EPOCH_NUM = 2
+PRE_ADV_EPOCH_NUM = 10
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 30
 MC_NUM = 16
 GAP_W = [0.2, 0.5, 0.5]
-GEN_LR = 0.003
-ADV_LR = 0.003
-DIS_LR = 0.003
-PRI_LR = 0.003
+GEN_LR = 0.01
+ADV_LR = 0.01
+DIS_LR = 0.01
+
 PRE_GEN_PATH = "../param/pre_generator_v1.pkl"
 PRE_ADV_PATH = "../param/pre_adversary_v1.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator_v1.pkl"
