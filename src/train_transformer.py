@@ -145,7 +145,6 @@ Define pretrain module for adversary
 '''
 def train_adv_epoch(model,
                     generator,
-                    privatizer,
                     dataloader, 
                     criterion, 
                     optimizer, 
@@ -161,17 +160,13 @@ def train_adv_epoch(model,
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         if generator != None:
-            if privatizer == None:
-                pred, encoder = generator.forward(input=data)
-            else:
-                # noise_out, noise_hidden = privatizer.forward(input=data)
-                pred, _ = generator.forward_with_noise(input=data,privatizer=privatizer)
+            pred, encoder = generator.forward(input=data)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(data.size(0), -1)
             samples = torch.stack([pred_, data[:,:,1]], axis=2)
         else:
             samples = data
-        pred = model.forward(samples)
+        pred, _ = model.forward(samples)
         loss = criterion(pred, target)
         total_loss += loss.item()
         total_words += data.size(0) * data.size(1)
@@ -186,7 +181,6 @@ def train_adv_epoch(model,
 
 def test_adv_epoch(model, 
                    generator,
-                   privatizer,
                    dataloader, 
                    criterion, 
                    optimizer, 
@@ -201,18 +195,14 @@ def test_adv_epoch(model,
         if USE_CUDA:
             data, target = data.cuda(), target.cuda()
         if generator != None:
-            if privatizer == None:
-                pred, _ = generator.forward(input=data)
-            else:
-                # noise_out, noise_hidden = privatizer.forward(input=data)
-                pred, _ = generator.forward_with_noise(input=data,privatizer=privatizer)
+            pred, _ = generator.forward(input=data)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(data.size(0), -1)
             samples = torch.stack([pred_, data[:,:,1]], axis=2)
         else:
             samples = data
         with torch.no_grad():
-            pred = model.forward(samples)
+            pred, _ = model.forward(samples)
             loss = criterion(pred, target)
             total_loss += loss.item()
             total_words += data.size(0) * data.size(1)
@@ -223,7 +213,6 @@ def test_adv_epoch(model,
 
 def train_adv(adversary,
               generator,
-              privatizer,
               train_loader, 
               test_loader, 
               adv_criterion, 
@@ -242,7 +231,6 @@ def train_adv(adversary,
         print('[INFO] Start epoch [%d] ...'% (epoch))
         train_loss, train_acc = train_adv_epoch(adversary,
                                                 generator, 
-                                                privatizer,
                                                 train_loader, 
                                                 adv_criterion, 
                                                 adv_optimizer, 
@@ -250,7 +238,6 @@ def train_adv(adversary,
                                                 USE_CUDA)
         test_loss, test_acc = test_adv_epoch(adversary,
                                              generator,
-                                             privatizer, 
                                              test_loader, 
                                              adv_criterion, 
                                              adv_optimizer, 
@@ -286,7 +273,6 @@ Define train discriminator
 '''
 def train_dis(discriminator, 
               generator,
-              privatizer,
               train_loader,
               test_loader,
               dis_criterion,
@@ -315,11 +301,7 @@ def train_dis(discriminator,
                 data = data.cuda()
                 label = label.cuda()
                 label_ = label_.cuda()
-            if privatizer == None:
-                pred, encoder = generator.forward(input=data)
-            else:
-                # noise_out, noise_hidden = privatizer.forward(input=data)
-                pred, _ = generator.forward_with_noise(input=data,privatizer=privatizer)
+            pred, encoder = generator.forward(input=data)
             _, pred_ = torch.max(pred, axis=-1)
             pred_ = pred_.view(batch_size, -1)
             if pred_.size(1) != seq_len:
@@ -328,7 +310,7 @@ def train_dis(discriminator,
             data_batch = torch.cat([data, data_], axis=0)
             label_batch = torch.cat([label, label_], axis=0)
             label_batch = label_batch.contiguous().view(-1)
-            pred_batch = discriminator(data_batch)
+            pred_batch, _, _ = discriminator(data_batch)
             loss = dis_criterion(pred_batch, label_batch)
             total_loss += loss.item()
             total_words += data_batch.size(0) * data_batch.size(1)
@@ -348,7 +330,6 @@ def train_dis(discriminator,
                       (epoch, total_loss, total_acc))
     test_loss, test_acc = test_dis(discriminator, 
                                    generator,
-                                   privatizer,
                                    test_loader,
                                    dis_criterion,
                                    dis_optimizer,
@@ -358,7 +339,6 @@ def train_dis(discriminator,
 
 def test_dis(discriminator, 
              generator,
-             privatizer,
              test_loader,
              dis_criterion,
              dis_optimizer,
@@ -380,11 +360,7 @@ def test_dis(discriminator,
             data = data.cuda()
             label = label.cuda()
             label_ = label_.cuda()
-        if privatizer == None:
-            pred, _ = generator.forward(input=data)
-        else:
-            # noise_out, noise_hidden = privatizer.forward(input=data)
-            pred, _ = generator.forward_with_noise(input=data,privatizer=privatizer)
+        pred, _ = generator.forward(input=data)
         _, pred_ = torch.max(pred, axis=-1)
         pred_ = pred_.view(batch_size, -1)
         if pred_.size(1) != seq_len:
@@ -393,7 +369,7 @@ def test_dis(discriminator,
         data_batch = torch.cat([data, data_], axis=0)
         label_batch = torch.cat([label, label_], axis=0)
         label_batch = label_batch.contiguous().view(-1)
-        pred_batch = discriminator(data_batch)
+        pred_batch, _, _ = discriminator(data_batch)
         loss = dis_criterion(pred_batch, label_batch)
         test_loss += loss.item()
         test_words += data_batch.size(0) * data_batch.size(1)
@@ -424,13 +400,12 @@ def train_gap(model,
               EPOCH_NUM,
               MC_NUM=16,
               W=[0.2,0.2,0.6]):
-    generator, discriminator, adversary, privatizer = model
-    gen_criterion, dis_criterion, adv_criterion, pri_criterion = criterion
-    gen_optimizer, dis_optimizer, adv_optimizer, pri_optimizer = optimizer
-    GEN_PATH, DIS_PATH, ADV_PATH, PRI_PATH = PATH
+    generator, discriminator, adversary = model
+    gen_criterion, dis_criterion, adv_criterion = criterion
+    gen_optimizer, dis_optimizer, adv_optimizer = optimizer
+    GEN_PATH, DIS_PATH, ADV_PATH = PATH
 
     # Adversarial Training
-
     print("[INFO] Start training GAP ...")
     gen_sim_loss = GANLoss()
     gen_dis_loss = GANLoss()
@@ -451,10 +426,10 @@ def train_gap(model,
         dis_reward_bias = 0
         adv_reward_bias = 0
         step = 0
-        total_pri_loss = 0
-        total_pri_sim_loss = 0
-        total_pri_dis_loss = 0
-        total_pri_adv_loss = 0
+        total_gen_loss = 0
+        total_gen_sim_loss = 0
+        total_gen_dis_loss = 0
+        total_gen_adv_loss = 0
         total_dis_acc = 0
         total_adv_acc = 0
         for batch in tqdm(train_loader): 
@@ -471,36 +446,41 @@ def train_gap(model,
             _, pred_ = torch.max(output, axis=-1)
             samples = pred_.view(batch_size, -1)
             samples_ = torch.stack([samples, data[:,:,1]], axis=2)
-            dis_pred = discriminator(samples_)
-            adv_pred = adversary(samples_)
-            dis_acc = torch.exp(dis_pred)[:,1].sum() / batch_size
-            adv_acc = torch.exp(torch.gather(adv_pred, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
-            pri_dis_loss = dis_criterion(dis_pred, dis_pred_label) / batch_size
-            pri_adv_loss = -adv_criterion(adv_pred, category) / batch_size
-            pri_sim_loss = torch.norm(pred_.float(),p=2).sum(0)
-            print(pri_sim_loss)
-            pri_loss = W[0] * pri_sim_loss + W[1] * pri_dis_loss + W[2] * pri_adv_loss
+            dis_out, dis_pred, _ = discriminator(samples_)
+            adv_out, adv_pred, _ = adversary(samples_)
+            dis_acc = torch.exp(dis_out)[:,1].sum() / batch_size
+            adv_acc = torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
+            dis_r = torch.exp(dis_pred)[:,:,1]
+            category = category.unsqueeze(1).repeat(1, seq_len, 1)
+            adv_r = 1 - torch.exp(torch.gather(adv_pred, 2, category))
+            
+            dis_loss = gen_dis_loss(output, samples.contiguous().view(-1), dis_r.contiguous().view(-1))
+            adv_loss = gen_adv_loss(output, samples.contiguous().view(-1), adv_r.contiguous().view(-1))
+            gen_loss = W[1] * dis_loss + W[2] * adv_loss
             generator.zero_grad()
             gen_optimizer.zero_grad()
-            pri_loss.backward()
+            gen_loss.backward()
             
-            for name, p in generator.named_parameters():
-                print(name,p.grad)
+            # for name, p in generator.named_parameters():
+            #     print(name,p.grad)
             gen_optimizer.step()
-            total_pri_loss += pri_loss.item()
-            total_pri_sim_loss += pri_sim_loss.item()
-            total_pri_dis_loss += pri_dis_loss.item()
-            total_pri_adv_loss += pri_adv_loss.item()
+            total_gen_loss += gen_loss.item()
+            total_gen_sim_loss += 0
+            total_gen_dis_loss += dis_loss.item()
+            total_gen_adv_loss += adv_loss.item()
             total_dis_acc += dis_acc.data.cpu().numpy()
             total_adv_acc += adv_acc.data.cpu().numpy()
 
         csvFile = open("../param/train_gap_trans_loss.csv", 'a', newline='')
         writer = csv.writer(csvFile)
-        writer.writerow([epoch, total_pri_loss / step, total_pri_sim_loss / step, \
-                            total_pri_dis_loss / step, total_pri_adv_loss / step, \
+        writer.writerow([epoch, total_gen_loss / step, total_gen_sim_loss / step, \
+                            total_gen_dis_loss / step, total_gen_adv_loss / step, \
                             total_dis_acc / step, total_adv_acc / step])
         csvFile.close()
-
+        print("[INFO] Epoch: {}, loss: {}, sim_loss: {}, dis_loss: {}, adv_loss: {}, \
+            dis_acc: {}, adv_acc: {}".\
+                format(epoch, total_gen_loss, total_gen_sim_loss, total_gen_dis_loss, total_gen_adv_loss.data, \
+                    total_dis_acc, total_adv_acc))
         if epoch > 0:
             for param_group in gen_optimizer.param_groups:
                 param_group['lr'] *= 0.99
@@ -510,7 +490,6 @@ def train_gap(model,
         if (epoch + 1) % 10 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
-                      privatizer=None,
                       train_loader=train_loader,
                       test_loader=test_loader,
                       dis_criterion=dis_criterion,
@@ -522,7 +501,6 @@ def train_gap(model,
                       PLOT=False)
             train_adv(adversary=adversary, 
                       generator=generator,
-                      privatizer=None,
                       train_loader=train_loader, 
                       test_loader=test_loader, 
                       adv_criterion=adv_criterion,

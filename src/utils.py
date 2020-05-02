@@ -94,20 +94,20 @@ class GANLoss(nn.Module):
 class TransformerModel(nn.Module):
     """Container module with an encoder, a recurrent or transformer module, and a decoder."""
 
-    def __init__(self, ntoken, ninp, nhead, nhid, num_encode_layers,num_decode_layers, dropout=0.5):
+    def __init__(self, num_words, emb_dim, out_dim, num_head, hid_dim, num_enc_l, num_dec_l, dropout=0.5):
         super(TransformerModel, self).__init__()
 
         self.model_type = 'Transformer'
         self.src_mask = None
-        self.pos_encoder = PositionalEncoding(ninp, dropout)
-        self.encoder_layers = TransformerEncoderLayer(ninp, nhead, nhid, dropout)
-        self.transformer_encoder = TransformerEncoder(self.encoder_layers, num_encode_layers)
-        self.encoder = nn.Embedding(ntoken, ninp)
-        self.ninp = ninp
-        self.decoder = nn.Linear(ninp, ntoken)
+        self.pos_encoder = PositionalEncoding(emb_dim, dropout)
+        self.encoder_layers = TransformerEncoderLayer(emb_dim, num_head, hid_dim, dropout)
+        self.transformer_encoder = TransformerEncoder(self.encoder_layers, num_enc_l)
+        self.encoder = nn.Embedding(num_words, emb_dim)
+        self.emb_dim = emb_dim
+        self.decoder = nn.Linear(emb_dim, out_dim)
 
-        # decoder_layer = TransformerDecoderLayer(ninp, nhead, nhid, dropout)
-        # self.decoder = TransformerDecoder(decoder_layer, num_decode_layers)
+        # decoder_layer = TransformerDecoderLayer(emb_dim, num_head, hid_dim, dropout)
+        # self.decoder = TransformerDecoder(decoder_layer, num_dec_l)
 
         self.init_weights()
 
@@ -122,7 +122,7 @@ class TransformerModel(nn.Module):
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self, src, has_mask=True, USE_CUDA=True):
+    def forward(self, src, has_mask=True, USE_CUDA=False):
 
         if self.src_mask is None or self.src_mask.size(0) != len(src):
             device = src.device
@@ -132,7 +132,7 @@ class TransformerModel(nn.Module):
         x = src[:,:,0]
         mask = src[:,:,1].float()
         src = self.encoder(x) * mask.unsqueeze(2)
-        src = src * math.sqrt(self.ninp) 
+        src = src * math.sqrt(self.emb_dim) 
         src = self.pos_encoder(src)
         if USE_CUDA:
             self.src_mask = self.src_mask.cuda()

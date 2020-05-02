@@ -14,8 +14,7 @@ import torch.optim as optim
 
 # Load self-defined module
 from generator_transformer import Generator, Gen_args
-from discriminator import Discriminator, Dis_args
-from privatizer import Privatizer, Pri_args
+from discriminator_transformer import Discriminator, Dis_args
 from train_transformer import pretrain_gen, train_adv, train_dis, train_gap
 from data_loader import LoadData
 
@@ -63,60 +62,44 @@ train_loader, test_loader, \
 
 
 # Genrator Parameters
-# gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
-#                     emb_dim=64, 
-#                     hidden_dim=64)
-# gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
-#                     emb_dim=64,
-#                     enc_hid_dim=64,
-#                     dec_hid_dim=64,
-#                     enc_dropout=0.5,
-#                     attn_dim=8,
-#                     dec_dropout=0.5)
-
 gen_args = Gen_args(vocab_size=VOCAB_SIZE, 
                     emb_dim=200,
-                    nhead=2,
-                    nhid=200,
-                    num_encode_layers=2,
-                    num_decode_layers=2,
-                    dropout=0.5)
-# Privatizer Parameters
-pri_args = Pri_args(vocab_size=VOCAB_SIZE, 
-                    emb_dim=64,
-                    enc_hid_dim=64,
-                    dec_hid_dim=64,
-                    enc_dropout=0.5)
+                    num_head=2,
+                    hid_dim=200,
+                    num_enc_l=2,
+                    num_dec_l=2,
+                    dropout=0.5,
+                    out_dim=VOCAB_SIZE)
 
 # Discriminator Parameters
-dis_args = Dis_args(num_classes=2, 
-                    vocab_size=VOCAB_SIZE, 
-                    emb_dim=64, 
-                    filter_sizes=[3, 4, 5], 
-                    num_filters=[150, 150, 150], 
-                    dropout=0.5)
+dis_args = Dis_args(vocab_size=VOCAB_SIZE, 
+                    emb_dim=200,
+                    num_head=2,
+                    hid_dim=200,
+                    num_enc_l=2,
+                    num_dec_l=2,
+                    dropout=0.5,
+                    out_dim=2)
 
 # Adversarial Parameters
-adv_args = Dis_args(num_classes=3, 
-                    vocab_size=VOCAB_SIZE, 
-                    emb_dim=64, 
-                    filter_sizes=[3, 4, 5], 
-                    num_filters=[150, 150, 150], 
-                    # filter_sizes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20],
-                    # num_filters=[100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160],
-                    dropout=0.5)
+adv_args = Dis_args(vocab_size=VOCAB_SIZE, 
+                    emb_dim=200,
+                    num_head=2,
+                    hid_dim=200,
+                    num_enc_l=2,
+                    num_dec_l=2,
+                    dropout=0.5,
+                    out_dim=3)
 
 # Define Networks
 generator = Generator(gen_args, USE_CUDA)
 discriminator = Discriminator(dis_args)
 adversary = Discriminator(adv_args)
-privatizer = Privatizer(pri_args)
 
 if USE_CUDA:
     generator = generator.cuda()
     discriminator = discriminator.cuda()
     adversary = adversary.cuda()
-    privatizer = privatizer.cuda()
 
 # Enter training phase
 if args.phase == "pretrain_gen":
@@ -148,7 +131,6 @@ elif args.phase == "pretrain_adv":
     # Pretrain adversary using CNN text classifier
     train_adv(adversary=adversary, 
               generator=None,
-              privatizer=None,
               train_loader=train_loader, 
               test_loader=test_loader, 
               adv_criterion=adv_criterion,
@@ -168,7 +150,6 @@ elif args.phase == "pretrain_dis":
     # Pretrain discriminator using CNN text classifier
     train_dis(discriminator=discriminator, 
               generator=generator,
-              privatizer=None,
               train_loader=train_loader,
               test_loader=test_loader,
               dis_criterion=dis_criterion,
@@ -187,11 +168,6 @@ elif args.phase == "train_gap":
         adversary.load_state_dict(torch.load(PRE_ADV_PATH))
     except:
         print("[Err] No pretrained model!")
-    # for name, p in generator.named_parameters():
-    #     if "enc" in name or "emb" in name:
-    #         p.requires_grad = False
-    #     else:
-    #         print(name, p.requires_grad)
     # Define optimizer and loss function for discriminator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)
@@ -199,22 +175,19 @@ elif args.phase == "train_gap":
     dis_optimizer = optim.Adam(discriminator.parameters(), lr=DIS_LR)
     adv_criterion = nn.NLLLoss(reduction='sum')
     adv_optimizer = optim.Adam(adversary.parameters(), lr=ADV_LR)
-    pri_criterion = nn.NLLLoss(reduction='sum')
-    pri_optimizer = optim.Adam(privatizer.parameters(), lr=PRI_LR)
     if USE_CUDA:
         gen_criterion = gen_criterion.cuda()
         dis_criterion = dis_criterion.cuda()
         adv_criterion = adv_criterion.cuda()
-        pri_criterion = pri_criterion.cuda()
     # Pretrain discriminator using CNN text classifier
     print("Starting")
-    train_gap(model=[generator, discriminator, adversary, privatizer],
-              criterion=[gen_criterion, dis_criterion, adv_criterion, pri_criterion],
-              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer, pri_optimizer],
+    train_gap(model=[generator, discriminator, adversary],
+              criterion=[gen_criterion, dis_criterion, adv_criterion],
+              optimizer=[gen_optimizer, dis_optimizer, adv_optimizer],
               train_loader=train_loader,
               test_loader=test_loader,
               index_map=index_map,
-              PATH=[GEN_PATH, DIS_PATH, ADV_PATH, PRI_PATH],
+              PATH=[GEN_PATH, DIS_PATH, ADV_PATH],
               USE_CUDA=USE_CUDA,
               EPOCH_NUM=GAP_EPOCH_NUM,
               MC_NUM=MC_NUM,
