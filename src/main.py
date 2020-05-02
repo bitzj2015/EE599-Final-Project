@@ -53,10 +53,10 @@ PRE_ADV_PATH = "../param/pre_adversary.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator.pkl"
 PRE_PRI_PATH = "../param/pre_privatizer.pkl"
 
-GEN_PATH = "../param/generator_v" + args.v".pkl"
-ADV_PATH = "../param/adversary_v" + args.v".pkl"
-DIS_PATH = "../param/discriminator_v" + args.v".pkl"
-PRI_PATH = "../param/privatizer_v" + args.v".pkl"
+GEN_PATH = "../param/generator_v" + args.v + ".pkl"
+ADV_PATH = "../param/adversary_v" + args.v + ".pkl"
+DIS_PATH = "../param/discriminator_v" + args.v + ".pkl"
+PRI_PATH = "../param/privatizer_v" + args.v + ".pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
