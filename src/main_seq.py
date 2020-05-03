@@ -37,7 +37,7 @@ np.random.seed(SEED)
 # Basic Training Paramters
 BATCH_SIZE = 64
 USE_CUDA = args.cuda
-PRE_GEN_EPOCH_NUM = 20
+PRE_GEN_EPOCH_NUM = 25
 PRE_ADV_EPOCH_NUM = 10
 PRE_DIS_EPOCH_NUM = 2
 GAP_EPOCH_NUM = 40
@@ -57,8 +57,8 @@ DIS_PATH = "../param/discriminator_v2" + args.v + ".pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
-    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v3.json", 
-                                                  word2id_path="../data/word_map_v3.json", 
+    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v4.json", 
+                                                  word2id_path="../data/word_map_v4.json", 
                                                   train_split=0.8,
                                                   BATCH_SIZE=64)
 
@@ -104,7 +104,7 @@ if USE_CUDA:
 
 # Enter training phase
 if args.phase == "pretrain_gen":
-    generator.load_state_dict(torch.load(PRE_GEN_PATH))
+    # generator.load_state_dict(torch.load(PRE_GEN_PATH))
     # Define optimizer and loss function for generator
     gen_criterion = nn.NLLLoss(reduction='sum')
     gen_optimizer = optim.Adam(generator.parameters(), lr=GEN_LR)

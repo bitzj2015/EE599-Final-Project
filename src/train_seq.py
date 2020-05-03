@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from rollout_mp import Rollout
-from utils import GANLoss
+from utils import GANLoss, CumReward
 import numpy as np
 '''
 Define pretrain module for generator
@@ -399,7 +399,8 @@ def train_gap(model,
               USE_CUDA,
               EPOCH_NUM,
               MC_NUM=16,
-              W=[0.2,0.2,0.6]):
+              W=[0.2,0.2,0.6],
+              V="0"):
     generator, discriminator, adversary = model
     gen_criterion, dis_criterion, adv_criterion = criterion
     gen_optimizer, dis_optimizer, adv_optimizer = optimizer
@@ -416,7 +417,7 @@ def train_gap(model,
         gen_dis_loss = gen_dis_loss.cuda()
         gen_adv_loss = gen_adv_loss.cuda()
         W = W.cuda()
-    csvFile = open("../param/train_gap_seq_loss.csv", 'a', newline='')
+    csvFile = open("../param/train_gap_seq_loss" + V +".csv", 'a', newline='')
     writer = csv.writer(csvFile)
     writer.writerow(["epoch", "step", "gen_loss", "gen_mle_loss", \
                      "gen_dis_loss", "gen_adv_loss", "dis_reward", "adv_reward"])
@@ -432,7 +433,7 @@ def train_gap(model,
                       dis_optimizer=dis_optimizer,
                       DIS_PATH=DIS_PATH,
                       USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=2,
+                      EPOCH_NUM=5,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=False)
             train_adv(adversary=adversary, 
@@ -443,7 +444,7 @@ def train_gap(model,
                       adv_optimizer=adv_optimizer, 
                       ADV_PATH=ADV_PATH, 
                       USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=2,
+                      EPOCH_NUM=5,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=True)
         step = 0
@@ -471,10 +472,13 @@ def train_gap(model,
             adv_pred, adv_out = adversary(samples_)
             dis_acc = torch.exp(dis_out)[:,1].sum() / batch_size
             adv_acc = 1 - torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
-            dis_r = torch.exp(dis_pred)[:,:,1]
+            dis_r = torch.exp(dis_pred)[:,:,1] 
+            dis_r = dis_r.view(batch_size, -1) * data[:,:,1].float()
             category = category.view(batch_size,1).unsqueeze(1).repeat(1, seq_len, 1)
             adv_r = 1 - torch.exp(torch.gather(adv_pred, 2, category))
-            
+            adv_r = adv_r.view(batch_size, -1) * data[:,:,1].float()
+            dis_r = CumReward(dis_r, gamma=0.95, USE_CUDA=USE_CUDA)
+            adv_r = CumReward(adv_r, gamma=0.95, USE_CUDA=USE_CUDA)
             dis_loss = gen_dis_loss(output, samples.contiguous().view(-1), dis_r.contiguous().view(-1))
             adv_loss = gen_adv_loss(output, samples.contiguous().view(-1), adv_r.contiguous().view(-1))
             mle_loss = gen_criterion(output, data[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
@@ -492,9 +496,10 @@ def train_gap(model,
             total_gen_adv_loss += adv_loss.item()
             total_dis_acc += dis_acc.data.cpu().numpy()
             total_adv_acc += adv_acc.data.cpu().numpy()
-
+            # for name, p in generator.named_parameters():
+            #     print(name,p.grad)
             if step % 10 == 0:
-                csvFile = open("../param/train_gap_seq_loss.csv", 'a', newline='')
+                csvFile = open("../param/train_gap_seq_loss" + V +".csv", 'a', newline='')
                 writer = csv.writer(csvFile)
                 writer.writerow([epoch, step, total_gen_loss / step, total_gen_mle_loss / step, \
                                     total_gen_dis_loss / step, total_gen_adv_loss / step, \

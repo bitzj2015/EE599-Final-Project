@@ -91,6 +91,20 @@ class GANLoss(nn.Module):
         loss =  -torch.sum(loss) / loss.size(0)
         return loss
 
+def CumReward(reward, gamma=0.95, USE_CUDA=False):
+    '''
+    Args: r
+        eward : (B, L), torch variable
+    '''
+    batch_size, seq_len = reward.size(0), reward.size(1)
+    CumR = torch.zeros((batch_size, seq_len)).float()
+    if USE_CUDA:
+        CumR = CumR.cuda()
+    CumR[:,-1] = reward[:,-1]
+    for i in range(seq_len - 2, -1, -1):
+        CumR[:, i] = reward[:,i] + gamma * reward[:,i+1]
+    return CumR
+
 class TransformerModel(nn.Module):
     """Container module with an encoder, a recurrent or transformer module, and a decoder."""
 
