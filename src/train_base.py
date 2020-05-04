@@ -408,7 +408,8 @@ def train_gap(model,
               USE_CUDA,
               EPOCH_NUM,
               MC_NUM=16,
-              W=[0.2,0.2,0.6]):
+              W=[0.2,0.2,0.6],
+              V="0"):
     generator, discriminator, adversary = model
     gen_criterion, dis_criterion, adv_criterion = criterion
     gen_optimizer, dis_optimizer, adv_optimizer = optimizer
@@ -427,11 +428,34 @@ def train_gap(model,
         gen_dis_loss = gen_dis_loss.cuda()
         gen_adv_loss = gen_adv_loss.cuda()
         W = W.cuda()
-    csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+    csvFile = open("../param/train_gap_loss" + V + ".csv", 'a', newline='')
     writer = csv.writer(csvFile)
     writer.writerow(["epoch", "step", "mle_loss", "dis_loss", "adv_loss", "sim_reward", "dis_reward", "adv_reward", "dis_reward_bias", "adv_reward_bias"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
+        if epoch % 2 == 0:
+            train_dis(discriminator=discriminator, 
+                      generator=generator,
+                      train_loader=train_loader,
+                      test_loader=test_loader,
+                      dis_criterion=dis_criterion,
+                      dis_optimizer=dis_optimizer,
+                      DIS_PATH=DIS_PATH,
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=2,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=False)
+            train_adv(adversary=adversary, 
+                      generator=generator,
+                      train_loader=train_loader, 
+                      test_loader=test_loader, 
+                      adv_criterion=adv_criterion,
+                      adv_optimizer=adv_optimizer, 
+                      ADV_PATH=ADV_PATH, 
+                      USE_CUDA=USE_CUDA, 
+                      EPOCH_NUM=2,
+                      PHASE="train_ep_"+str(epoch), 
+                      PLOT=True)
         ## Train the generator for one step
         dis_reward_bias = 0
         adv_reward_bias = 0
@@ -487,7 +511,7 @@ def train_gap(model,
                 sim_reward: {}, dis_reward: {}, adv_reward: {}, dis_r_bias: {}, adv_r_bias: {}".\
                     format(epoch, step, gen_gap_loss.data, mle_loss.data, dis_loss.data, adv_loss.data, \
                         sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias))
-            csvFile = open("../param/train_gap_loss.csv", 'a', newline='')
+            csvFile = open("../param/train_gap_loss" + V + ".csv", 'a', newline='')
             writer = csv.writer(csvFile)
             writer.writerow([epoch, step, mle_loss.data.cpu().numpy(), dis_loss.data.cpu().numpy(), 
                              adv_loss.data.cpu().numpy(), sim_R, dis_R, adv_R, dis_reward_bias, adv_reward_bias])
@@ -498,29 +522,7 @@ def train_gap(model,
             rollout.update_params()
         torch.save(generator.state_dict(), GEN_PATH)
 
-        if (epoch + 1) % 2 == 0:
-            train_dis(discriminator=discriminator, 
-                      generator=generator,
-                      train_loader=train_loader,
-                      test_loader=test_loader,
-                      dis_criterion=dis_criterion,
-                      dis_optimizer=dis_optimizer,
-                      DIS_PATH=DIS_PATH,
-                      USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=5,
-                      PHASE="train_ep_"+str(epoch), 
-                      PLOT=False)
-            train_adv(adversary=adversary, 
-                      generator=generator,
-                      train_loader=train_loader, 
-                      test_loader=test_loader, 
-                      adv_criterion=adv_criterion,
-                      adv_optimizer=adv_optimizer, 
-                      ADV_PATH=ADV_PATH, 
-                      USE_CUDA=USE_CUDA, 
-                      EPOCH_NUM=5,
-                      PHASE="train_ep_"+str(epoch), 
-                      PLOT=True)
+
 
 
 '''
