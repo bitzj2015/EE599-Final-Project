@@ -6,3 +6,4 @@ local
 .ipynb_checkpoints
 .DS_Store
 *.png
+*.h5
