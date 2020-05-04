@@ -37,20 +37,20 @@ W = [0.02, 0.2, 0.8]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
-v = "W228"
+v = "W282"
 
-PRE_GEN_PATH = "../param/pre_generator_v2.pkl"
-PRE_ADV_PATH = "../param/pre_adversary_v2.pkl"
-PRE_DIS_PATH = "../param/pre_discriminator_v2.pkl"
+PRE_GEN_PATH = "../param/pre_generator_v1.pkl"
+PRE_ADV_PATH = "../param/pre_adversary_v1.pkl"
+PRE_DIS_PATH = "../param/pre_discriminator_v1.pkl"
 
-GEN_PATH = "../param/generator_v2-W282.pkl"
-ADV_PATH = "../param/adversary_v2-W282.pkl"
-DIS_PATH = "../param/discriminator_v2-W282.pkl"
+GEN_PATH = "../param/generator_v1-W282.pkl"
+ADV_PATH = "../param/adversary_v1-W282.pkl"
+DIS_PATH = "../param/discriminator_v1-W282.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
-    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v3.json", 
-                                                  word2id_path="../data/word_map_v3.json", 
+    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v4.json", 
+                                                  word2id_path="../data/word_map_v4.json", 
                                                   train_split=0.8,
                                                   BATCH_SIZE=64)
 
