@@ -37,15 +37,15 @@ W = [0.02, 0.2, 0.8]
 GEN_LR = 0.01
 ADV_LR = 0.01
 DIS_LR = 0.01
-v = "W282"
+v = "W255"
 
 PRE_GEN_PATH = "../param/pre_generator_v1.pkl"
 PRE_ADV_PATH = "../param/pre_adversary_v1.pkl"
 PRE_DIS_PATH = "../param/pre_discriminator_v1.pkl"
 
-GEN_PATH = "../param/generator_v1-W282.pkl"
-ADV_PATH = "../param/adversary_v1-W282.pkl"
-DIS_PATH = "../param/discriminator_v1-W282.pkl"
+GEN_PATH = "../param/generator_v1-W255.pkl"
+ADV_PATH = "../param/adversary_v1-W255.pkl"
+DIS_PATH = "../param/discriminator_v1-W255.pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
