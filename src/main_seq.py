@@ -14,7 +14,7 @@ import torch.optim as optim
 
 # Load self-defined module
 from generator_seq import Generator, Gen_args
-from discriminator_seq import Discriminator, Dis_args
+from discriminator_seq2 import Discriminator, Dis_args
 from train_seq import pretrain_gen, train_adv, train_dis, train_pri, train_gap
 from data_loader import LoadData
 
@@ -40,7 +40,7 @@ USE_CUDA = args.cuda
 PRE_GEN_EPOCH_NUM = 25
 PRE_ADV_EPOCH_NUM = 10
 PRE_DIS_EPOCH_NUM = 2
-GAP_EPOCH_NUM = 40
+GAP_EPOCH_NUM = 30
 MC_NUM = 16
 GAP_W = [args.w0, args.w1, args.w2]
 GEN_LR = 0.01
@@ -164,8 +164,8 @@ elif args.phase == "train_gap":
     # Load pretrained parameters
     try:
         generator.load_state_dict(torch.load(PRE_GEN_PATH))
-        discriminator.load_state_dict(torch.load(PRE_DIS_PATH))
-        adversary.load_state_dict(torch.load(PRE_ADV_PATH))
+        discriminator.load_state_dict(torch.load(DIS_PATH))
+        adversary.load_state_dict(torch.load(ADV_PATH))
     except:
         print("[Err] No pretrained model!")
     # Define optimizer and loss function for discriminator

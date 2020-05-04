@@ -16,7 +16,7 @@ from utils import GANLoss
 
 # Load self-defined module
 from generator_seq import Generator, Gen_args
-from discriminator_seq import Discriminator, Dis_args
+from discriminator_seq2 import Discriminator, Dis_args
 from train_seq import test_adv_epoch
 from data_loader import LoadData
 
@@ -49,8 +49,8 @@ DIS_PATH = "../param/discriminator_v2" + v + ".pkl"
 
 # Get training and testing dataloader
 train_loader, test_loader, \
-    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v3_.json", 
-                                                  word2id_path="../data/word_map_v3_.json", 
+    MAX_SEQ_LEN, VOCAB_SIZE, index_map = LoadData(data_path="../data/dataset_batch_v4.json", 
+                                                  word2id_path="../data/word_map_v4.json", 
                                                   train_split=0.8,
                                                   BATCH_SIZE=64)
 

@@ -423,7 +423,7 @@ def train_gap(model,
                      "gen_dis_loss", "gen_adv_loss", "dis_reward", "adv_reward"])
     csvFile.close()
     for epoch in range(EPOCH_NUM):
-        ## Train the generator for one step
+        # Train the generator for one step
         if epoch % 5 == 0:
             train_dis(discriminator=discriminator, 
                       generator=generator,
@@ -447,6 +447,33 @@ def train_gap(model,
                       EPOCH_NUM=5,
                       PHASE="train_ep_"+str(epoch), 
                       PLOT=True)
+        # step = 0
+        dis_r_bias = 0
+        adv_r_bias = 0
+        # for batch in tqdm(test_loader):
+        #     step += 1
+        #     data, category = batch['x'], batch['u'].squeeze()
+        #     batch_size = data.size(0)
+        #     seq_len = data.size(1)
+        #     dis_pred_label = torch.ones((batch_size)).long()
+        #     if USE_CUDA:
+        #         data, category, dis_pred_label = \
+        #         data.cuda(), category.cuda(), dis_pred_label.cuda()
+        #     # noise_out, noise_hidden = privatizer.forward(input=data)
+        #     with torch.no_grad():
+        #         output = generator.forward(input=data)
+        #         _, pred_ = torch.max(output, axis=-1)
+        #         samples = pred_.view(batch_size, -1)
+        #         samples_ = torch.stack([samples, data[:,:,1]], axis=2)
+        #         dis_pred, dis_out = discriminator(samples_)
+        #         adv_pred, adv_out = adversary(samples_)
+        #         dis_acc = torch.exp(dis_out)[:,1].sum() / batch_size
+        #         adv_acc = 1 - torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
+        #         dis_r_bias += dis_acc.data.cpu().numpy()
+        #         adv_r_bias += adv_acc.data.cpu().numpy()
+        # dis_r_bias /= step
+        # adv_r_bias /= step
+
         step = 0
         total_gen_loss = 0
         total_gen_mle_loss = 0
@@ -472,13 +499,16 @@ def train_gap(model,
             adv_pred, adv_out = adversary(samples_)
             dis_acc = torch.exp(dis_out)[:,1].sum() / batch_size
             adv_acc = 1 - torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1)).sum() / batch_size
-            dis_r = torch.exp(dis_pred)[:,:,1] 
-            dis_r = dis_r.view(batch_size, -1) * data[:,:,1].float()
+            # dis_r = torch.exp(dis_pred)[:,:,1] / (1 - torch.exp(dis_pred)[:,:,1] + 1e-6)
+            dis_r = (dis_r.view(batch_size, -1) - dis_r_bias) * data[:,:,1].float()
             category = category.view(batch_size,1).unsqueeze(1).repeat(1, seq_len, 1)
             adv_r = 1 - torch.exp(torch.gather(adv_pred, 2, category))
-            adv_r = adv_r.view(batch_size, -1) * data[:,:,1].float()
-            dis_r = CumReward(dis_r, gamma=0.95, USE_CUDA=USE_CUDA)
-            adv_r = CumReward(adv_r, gamma=0.95, USE_CUDA=USE_CUDA)
+            adv_r = (adv_r.view(batch_size, -1) - adv_r_bias) * data[:,:,1].float() 
+            # print(dis_r[0], adv_r[0], dis_r_bias, adv_r_bias)
+            # print(dis_r[0])
+            # dis_r = CumReward(dis_r, gamma=0.98, USE_CUDA=USE_CUDA) * torch.exp(dis_out)[:,1].unsqueeze(1)
+            # print(dis_r[0])
+            # adv_r = CumReward(adv_r, gamma=0.98, USE_CUDA=USE_CUDA)
             dis_loss = gen_dis_loss(output, samples.contiguous().view(-1), dis_r.contiguous().view(-1))
             adv_loss = gen_adv_loss(output, samples.contiguous().view(-1), adv_r.contiguous().view(-1))
             mle_loss = gen_criterion(output, data[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
