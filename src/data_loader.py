@@ -55,6 +55,6 @@ def LoadData(data_path="../local/dataset_batch.json",
                             max_len=MAX_SEQ_LEN)
     test_loader = DataLoader(dataset=test_dataset, 
                             batch_size=BATCH_SIZE, 
-                            shuffle=True)
+                            shuffle=False)
 
     return train_loader, test_loader, MAX_SEQ_LEN, VOCAB_SIZE, index_map

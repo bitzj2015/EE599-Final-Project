@@ -99,23 +99,32 @@ step = 0
 gen_sim_loss = GANLoss()
 gen_dis_loss = GANLoss()
 gen_adv_loss = GANLoss()
+gen_criterion = nn.NLLLoss(reduction='sum')
 W = torch.Tensor(W)
 if USE_CUDA:
     gen_sim_loss = gen_sim_loss.cuda()
     gen_dis_loss = gen_dis_loss.cuda()
     gen_adv_loss = gen_adv_loss.cuda()
     W = W.cuda()
+    gen_criterion = gen_criterion.cuda()
 
 dis_reward_bias = 0
 adv_reward_bias = 0
 actual_adv_acc = 0
+actual_dis_acc = 0
+mle_loss_total = 0
 for batch in tqdm(test_loader): 
     step += 1  
     data, category = batch['x'], batch['u'].squeeze()
+    batch_size = data.size(0)
+    label = torch.ones((batch_size, 1)).long()
+    label_ = torch.zeros((batch_size, 1)).long()
     if USE_CUDA:
         data = data.cuda()
+        label = label.cuda()
+        label_ = label_.cuda()
         category = category.cuda()
-    batch_size = data.size(0)
+    
     target = data
     with torch.no_grad():
         samples, pred = generator.sample(batch_size, x_gen=None, target=target)
@@ -123,18 +132,31 @@ for batch in tqdm(test_loader):
         dis_pred = discriminator(samples_).detach()
         dis_pred = torch.exp(dis_pred)[:,1]
         dis_reward_bias += dis_pred.data.cpu().numpy().sum() / batch_size
+        # dis accuracy
+        data_batch = torch.cat([data, samples_], axis=0)
+        label_batch = torch.cat([label, label_], axis=0)
+        label_batch = label_batch.contiguous().view(-1)
+        pred_batch = discriminator(data_batch)
+        _, pred_batch_ = torch.max(pred_batch, axis=-1)
+        actual_dis_acc += (pred_batch_ == label_batch).sum().item() / (batch_size * 2)
+        
         adv_out = adversary(samples_).detach()
         _, adv_cat = torch.max(adv_out, dim=-1)
         adv_pred = torch.exp(torch.gather(adv_out, 1, category.view(batch_size,1)).view(-1))
         adv_pred = 1 - adv_pred    
         adv_reward_bias += adv_pred.data.cpu().numpy().sum() / batch_size
         actual_adv_acc += (adv_cat == category).sum().item() / batch_size
+        mle_loss = gen_criterion(pred, target[:, :, 0].contiguous().view(-1)) / (data.size(0) * data.size(1))
+        mle_loss_total += mle_loss.item()
+        print(mle_loss.item(), np.shape(pred))
 
 dis_reward_bias /= step
 adv_reward_bias /= step
 actual_adv_acc /= step
+mle_loss_total /= step
+actual_dis_acc /= step
 
-print("[INFO] (Dis_R, Adv_R): ({}, {}), adv_acc: {}".format(dis_reward_bias, adv_reward_bias, actual_adv_acc)) 
+print("[INFO] (ce_loss, Dis_R, Adv_R): ({}, {}, {}), (dis_acc, adv_acc): ({}, {})".format(mle_loss_total, dis_reward_bias, adv_reward_bias, actual_dis_acc, actual_adv_acc)) 
 
 orig = data[:,:,0].detach().cpu().numpy()
 obfu = samples.detach().cpu().numpy()
